@@ -86,7 +86,7 @@ document.ondrop = function(e) {
           .on("mouseover", function(d) {
             //d3.select("body").style("cursor", "crosshair");
             d3.select(this)
-              .style("fill", "#00aaaa");
+              .style("fill", "#aa00aa");
           })
           .on("mouseleave", function(d) {
             d3.select(this)
