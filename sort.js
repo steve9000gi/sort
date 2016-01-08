@@ -8,7 +8,7 @@
 
 var textDragged = null;
 var textHeight = 16;
-var padding = 16;
+var padding = 10;
 var titleEditGroup = null;
 
 
@@ -61,15 +61,14 @@ document.ondrop = function(e) {
       var isNextLineTitle = true;
       d3.select("svg").append("g")
         .attr("id", "textListG");
-
       d3.select("#textListG").selectAll(".nodeText")
         .data(split)
         .enter()
         .append("text")
           .classed("nodeText", true)
-          .attr("x", "10")
+          .attr("x", padding)
           .attr("y", function(d) {
-            return padding + textHeight * n++;
+            return textHeight * (1 + n++);
           })
           .attr("dx", 0)
           .attr("dy", 0)
@@ -94,7 +93,7 @@ document.ondrop = function(e) {
           });
       d3.select("svg")
         .attr("viewBox", function() {
-          return "0, 0, " + window.innerWidth + ", " + (n * padding);
+          return "0, 0, " + window.innerWidth + ", " + (n * textHeight);
         })
         .attr("height", n * textHeight);
 
@@ -117,17 +116,17 @@ var resizeBox = function(boxG) {
     height = bbox.y + bbox.height;
   }
   g.select("rect")
-   .attr("width", width + 10)
-   .attr("height", height +10);
+   .attr("width", width + padding)
+   .attr("height", height + padding);
 };
 
 var closeListRanks = function() {
   var listTexts = d3.selectAll(".nodeText");
   for (var i = 0; i < listTexts[0].length; i++) {
     d3.select(listTexts[0][i])
-      .attr("x", "10")
+      .attr("x", padding)
       .attr("y", function(d) {
-        return padding + textHeight * i;
+        return textHeight * (i + 1);
       })
   }
 };
@@ -163,6 +162,14 @@ var selectText = function(el) {
 };
 
 
+// Expects "this" to be an SVG text element.
+var editBoxTitle = function() {
+  var d3txt = changeElementText(this, this.textContent);
+  var txtNode = d3txt.node();
+  selectText(txtNode);
+  txtNode.focus();
+};
+
 
 // Place editable text in place of svg text
 var changeElementText = function(d3element, text) {
@@ -192,7 +199,8 @@ var changeElementText = function(d3element, text) {
       text = this.parentElement.textContent.trim(); // Remove outer whitespace
       d3.select(titleEditGroup).append("text")
         .classed("boxTitle", true)
-        .text(text);
+        .text(text)
+        .on("click", editBoxTitle);
       d3.select(this.parentElement).remove();
     });
   return d3txt;
@@ -228,12 +236,7 @@ var newBox = function(d) {
     .attr("contentEditable", true)
     .text("Title")
         .classed("boxTitle", true)
-    .on("click", function(text) {
-      var d3txt = changeElementText(this, "title");
-      var txtNode = d3txt.node();
-      selectText(txtNode);
-      txtNode.focus();
-    });
+    .on("click", editBoxTitle);
   d3.selectAll(".boxG").call(dragBox);
 };
 
