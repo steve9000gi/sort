@@ -2,18 +2,13 @@
 // they're displayed, one to a line, as a column on the left.
 //
 // Create and title boxes. Drag the boxes around as desired. Drag text items
-// from the column on the left into various boxes.
+// from the column on the left into various boxes. Save box titles and contents
+// as titled lists to text file.
 
 "use strict";
 
-var textDragged = null;
-var textHeight = 16;
-var padding = 10;
-var titleEditGroup = null;
-
-
+// See http://jsfiddle.net/Y8y7V/1/ for avoiding object jump to cursor.
 var dragText = d3.behavior.drag()
-  // See http://jsfiddle.net/Y8y7V/1/ for avoiding object jump to cursor.
   .origin(function(d, i) {
     var t = d3.select(this);
     return {x: t.attr("x"), y: t.attr("y")};
@@ -30,8 +25,8 @@ var dragText = d3.behavior.drag()
   });
 
 
+// See http://jsfiddle.net/Y8y7V/1/ for avoiding object jump to cursor.
 var dragBox = d3.behavior.drag()
-  // See http://jsfiddle.net/Y8y7V/1/ for avoiding object jump to cursor.
   .origin(function(d, i) {
     var t = d3.select(this);
     return {x: t.attr("x") + d3.transform(t.attr("transform")).translate[0],
@@ -78,7 +73,6 @@ document.ondrop = function(e) {
               return i++ + ". " + d;
             } else {
               isNextLineTitle = !isNextLineTitle;
-              i = 1;
               return d;
             }
           })
@@ -104,6 +98,7 @@ document.ondrop = function(e) {
 }
 
 
+// Adjust box size to hold its contents.
 var resizeBox = function(boxG) {
   var g = d3.select(boxG);
   var txts = g.selectAll(".boxText");
@@ -144,7 +139,6 @@ var boxMouseup = function(d) {
       });
     d3.select(textDragged).remove();
     textDragged = null; 
-
     resizeBox(this);
     closeListRanks();
   }
@@ -164,7 +158,7 @@ var selectText = function(el) {
 
 // Expects "this" to be an SVG text element.
 var editBoxTitle = function() {
-  var d3txt = changeElementText(this, this.textContent);
+  var d3txt = changeElementText(this);
   var txtNode = d3txt.node();
   selectText(txtNode);
   txtNode.focus();
@@ -172,23 +166,22 @@ var editBoxTitle = function() {
 
 
 // Place editable text in place of svg text
-var changeElementText = function(d3element, text) {
-  titleEditGroup = d3.select(d3element).node().parentElement;
+var changeElementText = function(textElement) {
+  titleEditGroup = d3.select(textElement).node().parentElement;
   var xform = d3.select(titleEditGroup).attr("transform");
   var x = d3.transform(xform).translate[0];
   var y = d3.transform(xform).translate[1];
-  d3.select(d3element).remove();
+  d3.select(textElement).remove();
   var d3txt = d3.select("svg").selectAll("foreignObject")
-    .data([text])
+    .data([textElement.textContent])
     .enter().append("foreignObject")
       .attr("x", x)
       .attr("y", y - textHeight)
       .attr("height", 15)
       .attr("width", 100)
     .append("xhtml:p")
-      .attr("id", "xxx")
       .attr("contentEditable", true)
-      .text(text)
+      .text(textElement.textContent)
     .on("mousedown", function() {
       d3.event.stopPropagation();
     })
@@ -196,7 +189,7 @@ var changeElementText = function(d3element, text) {
       d3.event.stopPropagation();
     })
     .on("blur", function(d) {
-      text = this.parentElement.textContent.trim(); // Remove outer whitespace
+      var text = this.textContent.trim(); // Remove outer whitespace
       d3.select(titleEditGroup).append("text")
         .classed("boxTitle", true)
         .text(text)
@@ -222,7 +215,6 @@ var newBox = function(d) {
       }
     })
     .on("mouseup", boxMouseup);
-   
   newBoxG.append("rect")
     .classed("box", true)
     .attr("x", 0)
@@ -231,7 +223,6 @@ var newBox = function(d) {
     .attr("height", 50)
     .style("stroke", "#000055")
     .style("fill", "#eeeeff");
-
   newBoxG.append("text")
     .attr("contentEditable", true)
     .text("Title")
@@ -257,6 +248,12 @@ var saveBoxes = function() {
 };
 
 
+// Main:
+
+var textDragged = null;
+var textHeight = 16;
+var padding = 10;
+var titleEditGroup = null;
 var docEl = document.documentElement,
 bodyEl = document.getElementsByTagName("body")[0];
 
