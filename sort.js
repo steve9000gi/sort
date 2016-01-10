@@ -7,6 +7,7 @@
 
 "use strict";
 
+
 // See http://jsfiddle.net/Y8y7V/1/ for avoiding object jump to cursor.
 var dragText = d3.behavior.drag()
   .origin(function(d, i) {
@@ -25,6 +26,15 @@ var dragText = d3.behavior.drag()
   });
 
 
+var getSelectedBoxText = function(box) {
+  var m = d3.mouse(box);
+  var i = Math.floor(m[1] / textHeight);
+  var boxTexts = d3.select(box).selectAll(".boxText");
+  console.log("m[1]: " + m[1] + "; i: " + i + "; boxTexts[0][i]: " + boxTexts[0][i]);
+  return boxTexts[0][i];
+};
+
+
 // See http://jsfiddle.net/Y8y7V/1/ for avoiding object jump to cursor.
 var dragBox = d3.behavior.drag()
   .origin(function(d, i) {
@@ -38,11 +48,13 @@ var dragBox = d3.behavior.drag()
   });
 
 
-document.ondragover = function(event){
+document.ondragover = function(event) {
     event.preventDefault();
 }
 
 
+// Display dropped-in text file as a list along the left side of the window.
+// Each line is a text object of class ".nodeText".
 document.ondrop = function(e) {
     e.preventDefault();  // Prevent browser from trying to run/display the file
     d3.selectAll(".nodeText").remove();
@@ -52,7 +64,7 @@ document.ondrop = function(e) {
       text = e.target.result;
       var length = text.length;
       var split = text.split("\n"); 
-      var n = 0, i = 1;
+      var ix = 0, n = 1, i = 1, id = 0;
       var isNextLineTitle = true;
       d3.select("svg").append("g")
         .attr("id", "textListG");
@@ -61,9 +73,15 @@ document.ondrop = function(e) {
         .enter()
         .append("text")
           .classed("nodeText", true)
+          .attr("id", function(d) {
+            return "id" + id++;
+          })
+          .attr("data-index", function(d) { // For re-inserting
+            return ix++;
+          })
           .attr("x", padding)
           .attr("y", function(d) {
-            return textHeight * (1 + n++);
+            return textHeight * n++;
           })
           .attr("dx", 0)
           .attr("dy", 0)
@@ -77,7 +95,6 @@ document.ondrop = function(e) {
             }
           })
           .on("mouseover", function(d) {
-            //d3.select("body").style("cursor", "crosshair");
             d3.select(this)
               .style("fill", "#aa00aa");
           })
@@ -90,8 +107,6 @@ document.ondrop = function(e) {
           return "0, 0, " + window.innerWidth + ", " + (n * textHeight);
         })
         .attr("height", n * textHeight);
-
-      
       d3.selectAll(".nodeText").call(dragText);
     };
     reader.readAsText(e.dataTransfer.files[0]);
@@ -102,13 +117,14 @@ document.ondrop = function(e) {
 var resizeBox = function(boxG) {
   var g = d3.select(boxG);
   var txts = g.selectAll(".boxText");
-  var masterBbox;
-  var width = 0;
-  var height = 0;
-  for (var i = 0; i < txts[0].length; i++) {
-    var bbox = txts[0][i].getBBox();
+  var nItems = txts[0].length;
+  var width = nItems ? 0 : boxDefaultW;
+  var height = nItems ? (textHeight * nItems) : boxDefaultH;
+  for (var i = 0; i < nItems; i++) {
+    var currentItem = txts[0][i];
+    d3.select(currentItem).attr("dy", (1 + i) * textHeight);
+    var bbox = currentItem.getBBox();
     width = Math.max(bbox.width, width);
-    height = bbox.y + bbox.height;
   }
   g.select("rect")
    .attr("width", width + padding)
@@ -127,17 +143,32 @@ var closeListRanks = function() {
 };
 
     
+var getFollowingListElement = function(elt) {
+  var textArray = d3.select("#textListG")[0][0].childNodes;
+  var index = elt.getAttribute("data-index");
+  var i = 0;
+  while (textArray[i].getAttribute("data-index") < index) {
+    i++;
+  }
+  return textArray[i];
+};
+
+
 var boxMouseup = function(d) {
   if (textDragged) {
+    var textObject = d3.select(textDragged);
     d3.select(this).append("text")
       .classed("boxText", true)
-      .text(d3.select(textDragged)[0][0].innerHTML)
+      .attr("id", textDragged.getAttribute("id"))
+      .text(textObject[0][0].innerHTML)
       .style("fill", "#000000")
+      .attr("data-index", textDragged.getAttribute("data-index"))
       .attr("dx", 3)
       .attr("dy", function(d) {
         return (this.parentNode.childElementCount - 2) * textHeight; 
       });
-    d3.select(textDragged).remove();
+    d3.selectAll(".boxText").call(dragText);
+    textObject.remove();
     textDragged = null; 
     resizeBox(this);
     closeListRanks();
@@ -214,13 +245,46 @@ var newBox = function(d) {
         d3.select(textDragged).style("fill", "#00aaaa");
       }
     })
-    .on("mouseup", boxMouseup);
+    .on("mouseup", boxMouseup)
+    .on("click", function() {
+      if (d3.event.shiftKey && !textDragged) {
+	var selectedBoxText = getSelectedBoxText(this);
+        if (!selectedBoxText) return;
+        var followingElement = getFollowingListElement(selectedBoxText);
+        var feId = followingElement.getAttribute("id");
+        var listIndex = selectedBoxText.getAttribute("data-index");
+	var nuText = d3.select("#textListG").insert("text", "#" + feId)
+	    .classed("nodeText", true)
+            .attr("id", selectedBoxText.getAttribute("id"))
+            .attr("data-index", listIndex)
+	    //.attr("x", padding)
+	    //.attr("y", 90)
+	    .attr("x", d3.event.x - 50)
+	    .attr("y", d3.event.y - 50)
+	    .attr("dx", 0)
+	    .attr("dy", 0)
+	    .style("fill", "#000000")
+	    .text(selectedBoxText.textContent)
+	    .on("mouseover", function(d) {
+	      d3.select(this)
+		.style("fill", "#aa00aa");
+	    })
+	    .on("mouseleave", function(d) {
+	      d3.select(this)
+		.style("fill", "#000000");
+	    });
+	d3.selectAll(".nodeText").call(dragText);
+	d3.select(selectedBoxText).remove();
+        resizeBox(this);
+        closeListRanks();
+      }
+    });
   newBoxG.append("rect")
     .classed("box", true)
     .attr("x", 0)
     .attr("y",0) 
-    .attr("width", 200)
-    .attr("height", 50)
+    .attr("width", boxDefaultW)
+    .attr("height", boxDefaultH)
     .style("stroke", "#000055")
     .style("fill", "#eeeeff");
   newBoxG.append("text")
@@ -251,8 +315,11 @@ var saveBoxes = function() {
 // Main:
 
 var textDragged = null;
+//var removingBoxText = false;
 var textHeight = 16;
 var padding = 10;
+var boxDefaultW = 200;
+var boxDefaultH = 50;
 var titleEditGroup = null;
 var docEl = document.documentElement,
 bodyEl = document.getElementsByTagName("body")[0];
