@@ -1,9 +1,10 @@
 // Drag and drop a file containing a list of text items onto the page, where
-// they're displayed, one to a line, as a column on the left.
+// they're displayed under their corresponding categories, one to a line, as
+// a column on the left.
 //
 // Create and title boxes. Drag the boxes around as desired. Drag text items
-// from the column on the left into various boxes. Save box titles and contents
-// as titled lists to text file.
+// from the column on the left into various boxes. Save the box titles and
+// contents as titled lists to a text file.
 
 "use strict";
 
@@ -26,11 +27,10 @@ var dragText = d3.behavior.drag()
   });
 
 
+// Return the SVG text element the user has selected.
 var getSelectedBoxText = function(box) {
-  var m = d3.mouse(box);
-  var i = Math.floor(m[1] / textHeight);
+  var i = Math.floor(d3.mouse(box)[1] / textHeight);
   var boxTexts = d3.select(box).selectAll(".boxText");
-  console.log("m[1]: " + m[1] + "; i: " + i + "; boxTexts[0][i]: " + boxTexts[0][i]);
   return boxTexts[0][i];
 };
 
@@ -53,7 +53,7 @@ document.ondragover = function(event) {
 }
 
 
-// Display dropped-in text file as a list along the left side of the window.
+// Display a dropped-in text file as a list along the left side of the window.
 // Each line is a text object of class ".nodeText".
 document.ondrop = function(e) {
     e.preventDefault();  // Prevent browser from trying to run/display the file
@@ -76,7 +76,7 @@ document.ondrop = function(e) {
           .attr("id", function(d) {
             return "id" + id++;
           })
-          .attr("data-index", function(d) { // For re-inserting
+          .attr("data-index", function(d) { // For re-inserting text into list
             return ix++;
           })
           .attr("x", padding)
@@ -96,7 +96,7 @@ document.ondrop = function(e) {
           })
           .on("mouseover", function(d) {
             d3.select(this)
-              .style("fill", "#aa00aa");
+              .style("fill", "#aa00aa"); 
           })
           .on("mouseleave", function(d) {
             d3.select(this)
@@ -131,7 +131,10 @@ var resizeBox = function(boxG) {
    .attr("height", height + padding);
 };
 
-var closeListRanks = function() {
+
+// Put those text items not in boxes in order along the left side of the window
+// and remove unwanted blank lines.
+var cleanUpList = function() {
   var listTexts = d3.selectAll(".nodeText");
   for (var i = 0; i < listTexts[0].length; i++) {
     d3.select(listTexts[0][i])
@@ -143,17 +146,20 @@ var closeListRanks = function() {
 };
 
     
-var getFollowingListElement = function(elt) {
+// Return the id of the text element that should be next after arg "elt".
+var getFollowingListElementId = function(elt) {
   var textArray = d3.select("#textListG")[0][0].childNodes;
-  var index = elt.getAttribute("data-index");
+  var index = parseInt(elt.getAttribute("data-index"));
   var i = 0;
   while (textArray[i].getAttribute("data-index") < index) {
     i++;
   }
-  return textArray[i];
+  return textArray[i].getAttribute("id");
 };
 
 
+// If the user is dragging a text element, drop a copy into the box and remove
+// it from the list.
 var boxMouseup = function(d) {
   if (textDragged) {
     var textObject = d3.select(textDragged);
@@ -171,7 +177,7 @@ var boxMouseup = function(d) {
     textObject.remove();
     textDragged = null; 
     resizeBox(this);
-    closeListRanks();
+    cleanUpList();
   }
 }; 
 
@@ -198,7 +204,7 @@ var editBoxTitle = function() {
 
 // Place editable text in place of svg text
 var changeElementText = function(textElement) {
-  titleEditGroup = d3.select(textElement).node().parentElement;
+  var titleEditGroup = d3.select(textElement).node().parentElement;
   var xform = d3.select(titleEditGroup).attr("transform");
   var x = d3.transform(xform).translate[0];
   var y = d3.transform(xform).translate[1];
@@ -231,6 +237,33 @@ var changeElementText = function(textElement) {
 };
 
 
+var removeTextItemFromBox = function() {
+  if (d3.event.shiftKey && !textDragged) {
+    var selectedBoxText = getSelectedBoxText(this);
+    if (!selectedBoxText) return;
+    var followingElementId = getFollowingListElementId(selectedBoxText);
+    d3.select("#textListG").insert("text", "#" + followingElementId)
+	.classed("nodeText", true)
+	.attr("id", selectedBoxText.getAttribute("id"))
+	.attr("data-index", selectedBoxText.getAttribute("data-index"))
+	.style("fill", "#000000")
+	.text(selectedBoxText.textContent)
+	.on("mouseover", function(d) {
+	  d3.select(this)
+	    .style("fill", "#aa00aa"); // Green text when droppable in box
+	})
+	.on("mouseleave", function(d) {
+	  d3.select(this)
+	    .style("fill", "#000000");
+	});
+    d3.selectAll(".nodeText").call(dragText);
+    d3.select(selectedBoxText).remove();
+    resizeBox(this);
+    cleanUpList();
+  }
+};
+
+
 var newBox = function(d) {
   var newBoxG = d3.select("svg").append("g")
     .classed("boxG", true)
@@ -246,39 +279,7 @@ var newBox = function(d) {
       }
     })
     .on("mouseup", boxMouseup)
-    .on("click", function() {
-      if (d3.event.shiftKey && !textDragged) {
-	var selectedBoxText = getSelectedBoxText(this);
-        if (!selectedBoxText) return;
-        var followingElement = getFollowingListElement(selectedBoxText);
-        var feId = followingElement.getAttribute("id");
-        var listIndex = selectedBoxText.getAttribute("data-index");
-	var nuText = d3.select("#textListG").insert("text", "#" + feId)
-	    .classed("nodeText", true)
-            .attr("id", selectedBoxText.getAttribute("id"))
-            .attr("data-index", listIndex)
-	    //.attr("x", padding)
-	    //.attr("y", 90)
-	    .attr("x", d3.event.x - 50)
-	    .attr("y", d3.event.y - 50)
-	    .attr("dx", 0)
-	    .attr("dy", 0)
-	    .style("fill", "#000000")
-	    .text(selectedBoxText.textContent)
-	    .on("mouseover", function(d) {
-	      d3.select(this)
-		.style("fill", "#aa00aa");
-	    })
-	    .on("mouseleave", function(d) {
-	      d3.select(this)
-		.style("fill", "#000000");
-	    });
-	d3.selectAll(".nodeText").call(dragText);
-	d3.select(selectedBoxText).remove();
-        resizeBox(this);
-        closeListRanks();
-      }
-    });
+    .on("click", removeTextItemFromBox);
   newBoxG.append("rect")
     .classed("box", true)
     .attr("x", 0)
@@ -308,24 +309,22 @@ var saveBoxes = function() {
     text += "\n";
   });
   var blob = new Blob([text], {type: "text/plain;charset=utf-8"});
-  window.saveAs(blob, "sortedItems.txt");
+  window.saveAs(blob, "SortedItems.txt");
 };
 
 
 // Main:
 
 var textDragged = null;
-//var removingBoxText = false;
 var textHeight = 16;
 var padding = 10;
 var boxDefaultW = 200;
 var boxDefaultH = 50;
-var titleEditGroup = null;
-var docEl = document.documentElement,
-bodyEl = document.getElementsByTagName("body")[0];
+var docElt = document.documentElement;
+var bodyElt = document.getElementsByTagName("body")[0];
 
-var width = window.innerWidth || docEl.clientWidth || bodyEl.clientWidth,
-height =  window.innerHeight|| docEl.clientHeight|| bodyEl.clientHeight;
+var width = window.innerWidth || docElt.clientWidth || bodyElt.clientWidth,
+height =  window.innerHeight|| docElt.clientHeight|| bodyElt.clientHeight;
 
 var topDiv = d3.select("#topDiv")
   .attr("width", width)
@@ -354,6 +353,14 @@ d3.select("#headerDiv").append("button")
   .attr("id", "saveBtn")
   .text("Save Boxes")
   .on("click", saveBoxes);
+
+d3.select("#headerDiv").append("button")
+  .attr("id", "helpBtn")
+  .text("Help")
+  .on("click", function() {
+    window.open("instructions.html","_blank");
+  });
+
 
 topDiv.append("svg:svg")
   .attr("width", width)
