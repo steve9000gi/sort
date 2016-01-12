@@ -53,6 +53,48 @@ document.ondragover = function(event) {
 }
 
 
+// Returns the number of elements created, i.e., the number of lines of text.
+var createTextListElements = function(strings) {
+  var ix = 0, n = 1, i = 1, id = 0;
+  var isNextLineTitle = true;
+  d3.select("svg").append("g")
+    .attr("id", "textListG");
+  d3.select("#textListG").selectAll(".nodeText")
+    .data(strings)
+    .enter()
+    .append("text")
+      .classed("nodeText", true)
+      .attr("id", function(d) {
+	return "id" + id++;
+      })
+      .attr("data-index", function(d) { // For re-inserting text into list
+	return ix++;
+      })
+      .attr("x", padding)
+      .attr("y", function(d) {
+	return textHeight * n++;
+      })
+      .style("fill", "#000000")
+      .text(function(d) {
+	if ((d.length > 0) && (!isNextLineTitle)) {
+	  return i++ + ". " + d;
+	} else {
+	  isNextLineTitle = !isNextLineTitle;
+	  return d;
+	}
+      })
+      .on("mouseover", function(d) {
+	d3.select(this)
+	  .style("fill", "#aa00aa");
+      })
+      .on("mouseleave", function(d) {
+	d3.select(this)
+	  .style("fill", "#000000");
+      });
+  return n;
+};
+
+
 // Display a dropped-in text file as a list along the left side of the window.
 // Each line is a text object of class ".nodeText".
 document.ondrop = function(e) {
@@ -64,44 +106,7 @@ document.ondrop = function(e) {
       text = e.target.result;
       var length = text.length;
       var split = text.split("\n"); 
-      var ix = 0, n = 1, i = 1, id = 0;
-      var isNextLineTitle = true;
-      d3.select("svg").append("g")
-        .attr("id", "textListG");
-      d3.select("#textListG").selectAll(".nodeText")
-        .data(split)
-        .enter()
-        .append("text")
-          .classed("nodeText", true)
-          .attr("id", function(d) {
-            return "id" + id++;
-          })
-          .attr("data-index", function(d) { // For re-inserting text into list
-            return ix++;
-          })
-          .attr("x", padding)
-          .attr("y", function(d) {
-            return textHeight * n++;
-          })
-          .attr("dx", 0)
-          .attr("dy", 0)
-          .style("fill", "#000000")
-          .text(function(d) {
-            if ((d.length > 0) && (!isNextLineTitle)) {
-              return i++ + ". " + d;
-            } else {
-              isNextLineTitle = !isNextLineTitle;
-              return d;
-            }
-          })
-          .on("mouseover", function(d) {
-            d3.select(this)
-              .style("fill", "#aa00aa"); 
-          })
-          .on("mouseleave", function(d) {
-            d3.select(this)
-              .style("fill", "#000000");
-          });
+      var n = createTextListElements(split);
       d3.select("svg")
         .attr("viewBox", function() {
           return "0, 0, " + window.innerWidth + ", " + (n * textHeight);
@@ -360,7 +365,6 @@ d3.select("#headerDiv").append("button")
   .on("click", function() {
     window.open("instructions.html","_blank");
   });
-
 
 topDiv.append("svg:svg")
   .attr("width", width)
