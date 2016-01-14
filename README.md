@@ -32,6 +32,8 @@ Drag items from the left-hand column of items into the box where you want them. 
 over or drag a text item it turns magenta. When it's droppable into a box the text turns bright
 green. Release the mouse button at that time and in it goes.
 
+If more space in the window is needed for boxes, shift-drag to scroll the window to the right.
+
 Shift-click on a text item inside a box to remove it from that box and restore it to its former
 location in the list on the left.
 

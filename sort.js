@@ -53,9 +53,23 @@ document.ondragover = function(event) {
 }
 
 
+// Magenta text -> hovering or dragging but not over a box
+var textMouseover = function() {
+  d3.select(this) .style("fill", "#aa00aa"); 
+};
+
+
+var textMouseleave = function() {
+       d3.select(this).style("fill", "#000000");
+};
+
+
 // Returns the number of elements created, i.e., the number of lines of text.
 var createTextListElements = function(strings) {
-  var ix = 0, n = 1, i = 1, id = 0;
+  var id = 0;        // .nodeText id attribute (includes category titles)
+  var dataIndex = 0; // For every text item including category titles
+  var lineNum = 1;   // Running count of # of lines including category titles
+  var i = 1;         // Numbers for text items in list excluding category titles
   var isNextLineTitle = true;
   d3.select("svg").append("g")
     .attr("id", "textListG");
@@ -67,12 +81,12 @@ var createTextListElements = function(strings) {
       .attr("id", function(d) {
 	return "id" + id++;
       })
-      .attr("data-index", function(d) { // For re-inserting text into list
-	return ix++;
+      .attr("data-index", function(d) { // For computing where to re-insert text item into list.
+	return dataIndex++;
       })
       .attr("x", padding)
       .attr("y", function(d) {
-	return textHeight * n++;
+	return textHeight * lineNum++;
       })
       .style("fill", "#000000")
       .text(function(d) {
@@ -83,15 +97,9 @@ var createTextListElements = function(strings) {
 	  return d;
 	}
       })
-      .on("mouseover", function(d) {
-	d3.select(this)
-	  .style("fill", "#aa00aa");
-      })
-      .on("mouseleave", function(d) {
-	d3.select(this)
-	  .style("fill", "#000000");
-      });
-  return n;
+      .on("mouseover", textMouseover)
+      .on("mouseleave", textMouseleave);
+  return lineNum;
 };
 
 
@@ -109,7 +117,7 @@ document.ondrop = function(e) {
       var n = createTextListElements(split);
       d3.select("svg")
         .attr("viewBox", function() {
-          return "0, 0, " + window.innerWidth + ", " + (n * textHeight);
+          return "0, 0, " + (window.innerWidth * 2) + ", " + (n * textHeight);
         })
         .attr("height", n * textHeight);
       d3.selectAll(".nodeText").call(dragText);
@@ -137,8 +145,8 @@ var resizeBox = function(boxG) {
 };
 
 
-// Put those text items not in boxes in order along the left side of the window
-// and remove unwanted blank lines.
+// Put all text items not in boxes in DOM order along the left side of the
+// window and remove unwanted blank lines.
 var cleanUpList = function() {
   var listTexts = d3.selectAll(".nodeText");
   for (var i = 0; i < listTexts[0].length; i++) {
@@ -164,7 +172,7 @@ var getFollowingListElementId = function(elt) {
 
 
 // If the user is dragging a text element, drop a copy into the box and remove
-// it from the list.
+// the original text element from the list.
 var boxMouseup = function(d) {
   if (textDragged) {
     var textObject = d3.select(textDragged);
@@ -189,41 +197,47 @@ var boxMouseup = function(d) {
 
 // Select all text in element: see http://stackoverflow.com/questions/6139107/
 // programatically-select-text-in-a-contenteditable-html-element
-var selectText = function(el) {
+var selectText = function(elt) {
   var range = document.createRange();
-  range.selectNodeContents(el);
-  var sel = window.getSelection();
-  sel.removeAllRanges();
-  sel.addRange(range);
+  range.selectNodeContents(elt);
+  var selection = window.getSelection();
+  if (selection != null) {
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
 };
 
 
 // Expects "this" to be an SVG text element.
 var editBoxTitle = function() {
   var d3txt = changeElementText(this);
+  if (d3txt == null) {
+    return;
+  }
   var txtNode = d3txt.node();
   selectText(txtNode);
   txtNode.focus();
 };
 
 
-// Place editable text in place of svg text
+// Place editable text in place of svg text.
 var changeElementText = function(textElement) {
   var titleEditGroup = d3.select(textElement).node().parentElement;
   var xform = d3.select(titleEditGroup).attr("transform");
   var x = d3.transform(xform).translate[0];
   var y = d3.transform(xform).translate[1];
+  var txt = textElement.textContent;
   d3.select(textElement).remove();
-  var d3txt = d3.select("svg").selectAll("foreignObject")
-    .data([textElement.textContent])
-    .enter().append("foreignObject")
-      .attr("x", x)
-      .attr("y", y - textHeight)
-      .attr("height", 15)
+  var d3txt = d3.select("svg").append("foreignObject")
+      .attr("id", "fo")
+      .attr("x", x - padding)
+      .attr("y", y - (2 * textHeight))
+      .attr("height", textHeight)
       .attr("width", 100)
-    .append("xhtml:p")
+    .append("xhtml:body").append("xhtml:p")
       .attr("contentEditable", true)
-      .text(textElement.textContent)
+      .attr("id", "fop")
+      .text(txt)
     .on("mousedown", function() {
       d3.event.stopPropagation();
     })
@@ -231,12 +245,12 @@ var changeElementText = function(textElement) {
       d3.event.stopPropagation();
     })
     .on("blur", function(d) {
-      var text = this.textContent.trim(); // Remove outer whitespace
       d3.select(titleEditGroup).append("text")
         .classed("boxTitle", true)
-        .text(text)
+        .text(this.textContent.trim()) // Remove outer whitespace
         .on("click", editBoxTitle);
-      d3.select(this.parentElement).remove();
+      //d3.select(this.parentElement).remove();
+      d3.selectAll("foreignObject").remove();
     });
   return d3txt;
 };
@@ -253,14 +267,8 @@ var removeTextItemFromBox = function() {
 	.attr("data-index", selectedBoxText.getAttribute("data-index"))
 	.style("fill", "#000000")
 	.text(selectedBoxText.textContent)
-	.on("mouseover", function(d) {
-	  d3.select(this)
-	    .style("fill", "#aa00aa"); // Green text when droppable in box
-	})
-	.on("mouseleave", function(d) {
-	  d3.select(this)
-	    .style("fill", "#000000");
-	});
+	.on("mouseover", textMouseover)
+	.on("mouseleave", textMouseleave);
     d3.selectAll(".nodeText").call(dragText);
     d3.select(selectedBoxText).remove();
     resizeBox(this);
@@ -272,15 +280,10 @@ var removeTextItemFromBox = function() {
 var newBox = function(d) {
   var newBoxG = d3.select("svg").append("g")
     .classed("boxG", true)
-    .attr("transform", "translate(" + (width / 2) + "," + (height / 4) + ")")
+    .attr("transform", "translate(" + (width / 4) + "," + (height / 4) + ")")
     .on("mouseover", function(d) {
       if (textDragged) {
-        d3.select(textDragged).style("fill", "#00ff00");
-      }
-    })
-    .on("mouseleave", function(d) {
-      if (textDragged) {
-        d3.select(textDragged).style("fill", "#00aaaa");
+        d3.select(textDragged).style("fill", "#00ff00"); // Green -> droppable
       }
     })
     .on("mouseup", boxMouseup)
@@ -302,6 +305,7 @@ var newBox = function(d) {
 };
 
 
+// Print the title, then the content, of each box to a text file, in DOM order.
 var saveBoxes = function() {
   var text = "";
   var boxGroups = d3.selectAll(".boxG");
@@ -328,8 +332,9 @@ var boxDefaultH = 50;
 var docElt = document.documentElement;
 var bodyElt = document.getElementsByTagName("body")[0];
 
-var width = window.innerWidth || docElt.clientWidth || bodyElt.clientWidth,
-height =  window.innerHeight|| docElt.clientHeight|| bodyElt.clientHeight;
+var width = window.innerWidth * 2 || docElt.clientWidth * 2
+    || bodyElt.clientWidth * 2; // Double width means more room for boxes.
+var height =  window.innerHeight|| docElt.clientHeight|| bodyElt.clientHeight;
 
 var topDiv = d3.select("#topDiv")
   .attr("width", width)
