@@ -1,10 +1,10 @@
-// Drag and drop a file containing a list of text items onto the page, where
-// they're displayed under their corresponding categories, one to a line, as
-// a column on the left.
+// Drag and drop into the browser window a file containing a list of text items,
+// which are displayed by node category, one to a line, in a column on the left.
 //
-// Create and title boxes. Drag the boxes around as desired. Drag text items
-// from the column on the left into various boxes. Save the box titles and
-// contents as titled lists to a text file.
+// Create, title and retitle boxes. Drag the boxes around as desired. Drag text
+// items from the list on the left into various boxes. Deleting text items from
+// boxes reinserts them into the list. Save the box titles and contents as
+// titled lists to a text file.
 
 "use strict";
 
@@ -16,7 +16,7 @@ var dragText = d3.behavior.drag()
     return {x: t.attr("x"), y: t.attr("y")};
   })
   .on("drag", function(d) {
-    textDragged = this;
+    textDragging = this;
     d3.select("body").style("cursor", "move");
     d3.select(this)
       .attr("x", d3.event.x)
@@ -25,14 +25,6 @@ var dragText = d3.behavior.drag()
   .on("dragend", function(d) {
     d3.select("body").style("cursor", "default");
   });
-
-
-// Return the SVG text element the user has selected.
-var getSelectedBoxText = function(box) {
-  var i = Math.floor(d3.mouse(box)[1] / textHeight);
-  var boxTexts = d3.select(box).selectAll(".boxText");
-  return boxTexts[0][i];
-};
 
 
 // See http://jsfiddle.net/Y8y7V/1/ for avoiding object jump to cursor.
@@ -53,7 +45,7 @@ document.ondragover = function(event) {
 }
 
 
-// Magenta text -> hovering or dragging but not over a box
+// Magenta text when hovering over (or dragging).
 var textMouseover = function() {
   d3.select(this) .style("fill", "#aa00aa"); 
 };
@@ -81,7 +73,7 @@ var createTextListElements = function(strings) {
       .attr("id", function(d) {
 	return "id" + id++;
       })
-      .attr("data-index", function(d) { // For computing where to re-insert text item into list.
+      .attr("data-index", function(d) { // For re-inserting text item into list.
 	return dataIndex++;
       })
       .attr("x", padding)
@@ -106,7 +98,7 @@ var createTextListElements = function(strings) {
 // Display a dropped-in text file as a list along the left side of the window.
 // Each line is a text object of class ".nodeText".
 document.ondrop = function(e) {
-    e.preventDefault();  // Prevent browser from trying to run/display the file
+    e.preventDefault();  // Prevent browser from trying to run/display the file.
     d3.selectAll(".nodeText").remove();
     var reader = new FileReader();
     var text;
@@ -174,21 +166,21 @@ var getFollowingListElementId = function(elt) {
 // If the user is dragging a text element, drop a copy into the box and remove
 // the original text element from the list.
 var boxMouseup = function(d) {
-  if (textDragged) {
-    var textObject = d3.select(textDragged);
+  if (textDragging) {
+    var textObject = d3.select(textDragging);
     d3.select(this).append("text")
       .classed("boxText", true)
-      .attr("id", textDragged.getAttribute("id"))
+      .attr("id", textDragging.getAttribute("id"))
       .text(textObject[0][0].innerHTML)
       .style("fill", "#000000")
-      .attr("data-index", textDragged.getAttribute("data-index"))
+      .attr("data-index", textDragging.getAttribute("data-index"))
       .attr("dx", 3)
       .attr("dy", function(d) {
         return (this.parentNode.childElementCount - 2) * textHeight; 
       });
     d3.selectAll(".boxText").call(dragText);
     textObject.remove();
-    textDragged = null; 
+    textDragging = null; 
     resizeBox(this);
     cleanUpList();
   }
@@ -229,12 +221,12 @@ var changeElementText = function(textElement) {
   var txt = textElement.textContent;
   d3.select(textElement).remove();
   var d3txt = d3.select("svg").append("foreignObject")
-      .attr("id", "fo")
-      .attr("x", x - padding)
-      .attr("y", y - (2 * textHeight))
+      .classed("fo", true)
+      .attr("x", x)
+      .attr("y", y - textHeight)
       .attr("height", textHeight)
       .attr("width", 100)
-    .append("xhtml:body").append("xhtml:p")
+    .append("xhtml:p")
       .attr("contentEditable", true)
       .attr("id", "fop")
       .text(txt)
@@ -249,15 +241,22 @@ var changeElementText = function(textElement) {
         .classed("boxTitle", true)
         .text(this.textContent.trim()) // Remove outer whitespace
         .on("click", editBoxTitle);
-      //d3.select(this.parentElement).remove();
       d3.selectAll("foreignObject").remove();
     });
   return d3txt;
 };
 
 
+// Return the SVG text element the user has selected.
+var getSelectedBoxText = function(box) {
+  var i = Math.floor(d3.mouse(box)[1] / textHeight);
+  var boxTexts = d3.select(box).selectAll(".boxText");
+  return boxTexts[0][i];
+};
+
+
 var removeTextItemFromBox = function() {
-  if (d3.event.shiftKey && !textDragged) {
+  if (d3.event.shiftKey && !textDragging) {
     var selectedBoxText = getSelectedBoxText(this);
     if (!selectedBoxText) return;
     var followingElementId = getFollowingListElementId(selectedBoxText);
@@ -282,8 +281,8 @@ var newBox = function(d) {
     .classed("boxG", true)
     .attr("transform", "translate(" + (width / 4) + "," + (height / 4) + ")")
     .on("mouseover", function(d) {
-      if (textDragged) {
-        d3.select(textDragged).style("fill", "#00ff00"); // Green -> droppable
+      if (textDragging) {
+        d3.select(textDragging).style("fill", "#00ff00"); // Green -> droppable
       }
     })
     .on("mouseup", boxMouseup)
@@ -305,7 +304,8 @@ var newBox = function(d) {
 };
 
 
-// Print the title, then the content, of each box to a text file, in DOM order.
+// Print the title and then the contents of each box to a text file, in DOM
+// order.
 var saveBoxes = function() {
   var text = "";
   var boxGroups = d3.selectAll(".boxG");
@@ -324,7 +324,7 @@ var saveBoxes = function() {
 
 // Main:
 
-var textDragged = null;
+var textDragging = null;
 var textHeight = 16;
 var padding = 10;
 var boxDefaultW = 200;
