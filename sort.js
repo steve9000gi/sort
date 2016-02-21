@@ -378,3 +378,7 @@ topDiv.append("svg:svg")
         "xmlns:xmlns:xlink": "http://www.w3.org/1999/xlink", 
         version: "1.1"
        });
+
+window.onbeforeunload = function() {
+  return "Make sure to save before leaving.";
+};
