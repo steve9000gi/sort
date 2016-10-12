@@ -10,29 +10,70 @@
 
 
 // See http://jsfiddle.net/Y8y7V/1/ for avoiding object jump to cursor.
-var dragText = d3.behavior.drag()
-  .origin(function(d, i) {
+var dragText = d3.drag()
+  .subject(function(d, i) {
     var t = d3.select(this);
     return {x: t.attr("x"), y: t.attr("y")};
   })
   .on("drag", function(d) {
+    console.log("text.on(\"drag\")");
     textDragging = this;
     d3.select("body").style("cursor", "move");
     d3.select(this)
       .attr("x", d3.event.x)
       .attr("y", d3.event.y);
   })
-  .on("dragend", function(d) {
+  .on("end", function(d) {
+    console.log("text.on(\"end\")");
+    boxMouseup(d);
     d3.select("body").style("cursor", "default");
   });
 
 
+// http://stackoverflow.com/questions/38224875/replacing-d3-transform-in-d3-v4
+function getTransformation(transform) {
+  // Create a dummy g for calculation purposes only. This will never
+  // be appended to the DOM and will be discarded once this function 
+  // returns.
+  var g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  
+  // Set the transform attribute to the provided string value.
+  g.setAttributeNS(null, "transform", transform);
+  
+  // consolidate the SVGTransformList containing all transformations
+  // to a single SVGTransform of type SVG_TRANSFORM_MATRIX and get
+  // its SVGMatrix. 
+  var matrix = g.transform.baseVal.consolidate().matrix;
+  
+  // Below calculations are taken and adapted from the private function
+  // transform/decompose.js of D3's module d3-interpolate.
+  var {a, b, c, d, e, f} = matrix;   // ES6, if this doesn't work, use below assignment
+  // var a=matrix.a, b=matrix.b, c=matrix.c, d=matrix.d, e=matrix.e, f=matrix.f; // ES5
+  var scaleX, scaleY, skewX;
+  if (scaleX = Math.sqrt(a * a + b * b)) a /= scaleX, b /= scaleX;
+  if (skewX = a * c + b * d) c -= a * skewX, d -= b * skewX;
+  if (scaleY = Math.sqrt(c * c + d * d)) c /= scaleY, d /= scaleY, skewX /= scaleY;
+  if (a * d < b * c) a = -a, b = -b, skewX = -skewX, scaleX = -scaleX;
+  return {
+    translateX: e,
+    translateY: f,
+    rotate: Math.atan2(b, a) * Math.PI/180,
+    skewX: Math.atan(skewX) * Math.PI/180,
+    scaleX: scaleX,
+    scaleY: scaleY
+  };
+}
+
+
 // See http://jsfiddle.net/Y8y7V/1/ for avoiding object jump to cursor.
-var dragBox = d3.behavior.drag()
-  .origin(function(d, i) {
+var dragBox = d3.drag()
+  .subject(function(d, i) {
     var t = d3.select(this);
-    return {x: t.attr("x") + d3.transform(t.attr("transform")).translate[0],
-            y: t.attr("y") + d3.transform(t.attr("transform")).translate[1]};
+    var xform = getTransformation(t.attr("transform"));
+    //return {x: t.attr("x") + d3.transform(t.attr("transform")).translate[0],
+    //        y: t.attr("y") + d3.transform(t.attr("transform")).translate[1]};
+    return {x: t.attr("x") + xform.translateX,
+            y: t.attr("y") + xform.translateY};
   })
   .on("drag", function(d) {
     d3.select(this)
@@ -122,11 +163,13 @@ document.ondrop = function(e) {
 var resizeBox = function(boxG) {
   var g = d3.select(boxG);
   var txts = g.selectAll(".boxText");
-  var nItems = txts[0].length;
+  //var nItems = txts[0].length;
+  var nItems = txts._groups[0].length;
   var width = nItems ? 0 : boxDefaultW;
   var height = nItems ? (textHeight * nItems) : boxDefaultH;
   for (var i = 0; i < nItems; i++) {
-    var currentItem = txts[0][i];
+    //var currentItem = txts[0][i];
+    var currentItem = txts._groups[0][i];
     d3.select(currentItem).attr("dy", (1 + i) * textHeight);
     var bbox = currentItem.getBBox();
     width = Math.max(bbox.width, width);
@@ -141,8 +184,8 @@ var resizeBox = function(boxG) {
 // window and remove unwanted blank lines.
 var cleanUpList = function() {
   var listTexts = d3.selectAll(".nodeText");
-  for (var i = 0; i < listTexts[0].length; i++) {
-    d3.select(listTexts[0][i])
+  for (var i = 0; i < listTexts._groups[0].length; i++) {
+    d3.select(listTexts._groups[0][i])
       .attr("x", padding)
       .attr("y", function(d) {
         return textHeight * (i + 1);
@@ -153,7 +196,7 @@ var cleanUpList = function() {
     
 // Return the id of the text element that should be next after arg "elt".
 var getFollowingListElementId = function(elt) {
-  var textArray = d3.select("#textListG")[0][0].childNodes;
+  var textArray = d3.select("#textListG")._groups[0][0].childNodes;
   var index = parseInt(elt.getAttribute("data-index"));
   var i = 0;
   while (textArray[i].getAttribute("data-index") < index) {
@@ -166,12 +209,15 @@ var getFollowingListElementId = function(elt) {
 // If the user is dragging a text element, drop a copy into the box and remove
 // the original text element from the list.
 var boxMouseup = function(d) {
+  console.log("box.on(\"mouseup\")");
   if (textDragging) {
     var textObject = d3.select(textDragging);
-    d3.select(this).append("text")
+    //d3.select(this).append("text")
+    d3.select(inBox).append("text")
       .classed("boxText", true)
       .attr("id", textDragging.getAttribute("id"))
-      .text(textObject[0][0].innerHTML)
+      //.text(textObject[0][0].innerHTML)
+      .text(textDragging.__data__)
       .style("fill", "#000000")
       .attr("data-index", textDragging.getAttribute("data-index"))
       .attr("dx", 3)
@@ -181,8 +227,9 @@ var boxMouseup = function(d) {
     d3.selectAll(".boxText").call(dragText);
     textObject.remove();
     textDragging = null; 
-    resizeBox(this);
+    resizeBox(inBox);
     cleanUpList();
+    inBox = null;
   }
 }; 
 
@@ -215,15 +262,15 @@ var editBoxTitle = function() {
 // Place editable text in place of svg text.
 var changeElementText = function(textElement) {
   var titleEditGroup = d3.select(textElement).node().parentElement;
-  var xform = d3.select(titleEditGroup).attr("transform");
-  var x = d3.transform(xform).translate[0];
-  var y = d3.transform(xform).translate[1];
+  var xform = getTransformation(d3.select(titleEditGroup).attr("transform"));
+  //var x = d3.transform(xform).translate[0];
+  //var y = d3.transform(xform).translate[1];
   var txt = textElement.textContent;
   d3.select(textElement).remove();
   var d3txt = d3.select("svg").append("foreignObject")
       .classed("fo", true)
-      .attr("x", x)
-      .attr("y", y - textHeight)
+      .attr("x", xform.translateX)
+      .attr("y", xform.translateY - textHeight)
       .attr("height", textHeight)
       .attr("width", 100)
     .append("xhtml:p")
@@ -251,11 +298,12 @@ var changeElementText = function(textElement) {
 var getSelectedBoxText = function(box) {
   var i = Math.floor(d3.mouse(box)[1] / textHeight);
   var boxTexts = d3.select(box).selectAll(".boxText");
-  return boxTexts[0][i];
+  return boxTexts._groups[0][i];
 };
 
 
 var removeTextItemFromBox = function() {
+  console.log("box.on(\"click\")");
   if (d3.event.shiftKey && !textDragging) {
     var selectedBoxText = getSelectedBoxText(this);
     if (!selectedBoxText) return;
@@ -281,11 +329,21 @@ var newBox = function(d) {
     .classed("boxG", true)
     .attr("transform", "translate(" + (width / 4) + "," + (height / 4) + ")")
     .on("mouseover", function(d) {
+      inBox = this;
+      console.log("box.on(\"mouseover\")");
       if (textDragging) {
         d3.select(textDragging).style("fill", "#00ff00"); // Green -> droppable
       }
     })
+    .on("mouseout", function(d) {
+      inBox = null;
+      console.log("box.on(\"mouseout\")");
+    })
+
     .on("mouseup", boxMouseup)
+    //.on("mouseup", function(d) {
+     //  console.log("box.on(\"mouseup\")");
+    //})
     .on("click", removeTextItemFromBox);
   newBoxG.append("rect")
     .classed("box", true)
@@ -322,9 +380,28 @@ var saveBoxes = function() {
 };
 
 
+var saveJSON = function() {
+  var boxGroups = d3.selectAll(".boxG");
+  var json = {};
+  boxGroups.each(function(d, i) {
+    var box = d3.select(this);
+    var name = box.select(".boxTitle")[0][0].textContent;
+    var vals = [];
+    box.selectAll(".boxText").each(function(d, i) {
+      vals.push(this.textContent);
+    });
+    json[name] = vals;
+  });
+  var blob = new Blob([window.JSON.stringify(json)],
+                      {type: "text/plain;charset=utf-8"});
+  window.saveAs(blob, "SortedItems.json");
+};
+
+
 // Main:
 
 var textDragging = null;
+var inBox = null;
 var textHeight = 16;
 var padding = 10;
 var boxDefaultW = 200;
@@ -362,7 +439,8 @@ d3.select("#headerDiv").append("button")
 d3.select("#headerDiv").append("button")
   .attr("id", "saveBtn")
   .text("Save Boxes")
-  .on("click", saveBoxes);
+  .on("click", saveJSON);
+  //.on("click", saveBoxes);
 
 d3.select("#headerDiv").append("button")
   .attr("id", "helpBtn")
