@@ -3,8 +3,7 @@
 //
 // Create, title and retitle boxes. Drag the boxes around as desired. Drag text
 // items from the list on the left into various boxes. Deleting text items from
-// boxes reinserts them into the list. Save the box titles and contents as
-// titled lists to a text file.
+// boxes reinserts them into the list. Save the box titles and contents as JSON.
 
 "use strict";
 
@@ -16,16 +15,20 @@ var dragText = d3.drag()
     return {x: t.attr("x"), y: t.attr("y")};
   })
   .on("drag", function(d) {
-    console.log("text.on(\"drag\")");
-    textDragging = this;
-    d3.select("body").style("cursor", "move");
-    d3.select(this)
-      .attr("x", d3.event.x)
-      .attr("y", d3.event.y);
+    if(this.parentElement.firstElementChild.tagName == "text") {
+      textDragging = this;
+      d3.select("body").style("cursor", "move");
+      d3.select(this)
+	.attr("x", d3.event.x)
+	.attr("y", d3.event.y);
+    }
   })
   .on("end", function(d) {
-    console.log("text.on(\"end\")");
-    boxMouseup(d);
+    if (inBox) {
+      dropTextIntoBox(d);
+    } else {
+      cleanUpList();
+    }
     d3.select("body").style("cursor", "default");
   });
 
@@ -45,10 +48,11 @@ function getTransformation(transform) {
   // its SVGMatrix. 
   var matrix = g.transform.baseVal.consolidate().matrix;
   
-  // Below calculations are taken and adapted from the private function
+  // Following calculations are taken and adapted from the private function
   // transform/decompose.js of D3's module d3-interpolate.
-  var {a, b, c, d, e, f} = matrix;   // ES6, if this doesn't work, use below assignment
-  // var a=matrix.a, b=matrix.b, c=matrix.c, d=matrix.d, e=matrix.e, f=matrix.f; // ES5
+  var {a, b, c, d, e, f} = matrix; // ES6, if this doesn't work, use as follows:
+  // var a=matrix.a, b=matrix.b, c=matrix.c, d=matrix.d, e=matrix.e, f=matrix.f;
+  // ES5
   var scaleX, scaleY, skewX;
   if (scaleX = Math.sqrt(a * a + b * b)) a /= scaleX, b /= scaleX;
   if (skewX = a * c + b * d) c -= a * skewX, d -= b * skewX;
@@ -70,8 +74,6 @@ var dragBox = d3.drag()
   .subject(function(d, i) {
     var t = d3.select(this);
     var xform = getTransformation(t.attr("transform"));
-    //return {x: t.attr("x") + d3.transform(t.attr("transform")).translate[0],
-    //        y: t.attr("y") + d3.transform(t.attr("transform")).translate[1]};
     return {x: t.attr("x") + xform.translateX,
             y: t.attr("y") + xform.translateY};
   })
@@ -86,7 +88,7 @@ document.ondragover = function(event) {
 }
 
 
-// Magenta text when hovering over (or dragging).
+// Magenta text when hovering over (or dragging when not over a box).
 var textMouseover = function() {
   d3.select(this) .style("fill", "#aa00aa"); 
 };
@@ -163,12 +165,10 @@ document.ondrop = function(e) {
 var resizeBox = function(boxG) {
   var g = d3.select(boxG);
   var txts = g.selectAll(".boxText");
-  //var nItems = txts[0].length;
   var nItems = txts._groups[0].length;
   var width = nItems ? 0 : boxDefaultW;
   var height = nItems ? (textHeight * nItems) : boxDefaultH;
   for (var i = 0; i < nItems; i++) {
-    //var currentItem = txts[0][i];
     var currentItem = txts._groups[0][i];
     d3.select(currentItem).attr("dy", (1 + i) * textHeight);
     var bbox = currentItem.getBBox();
@@ -208,16 +208,12 @@ var getFollowingListElementId = function(elt) {
 
 // If the user is dragging a text element, drop a copy into the box and remove
 // the original text element from the list.
-var boxMouseup = function(d) {
-  console.log("box.on(\"mouseup\")");
+var dropTextIntoBox = function(d) {
   if (textDragging) {
-    var textObject = d3.select(textDragging);
-    //d3.select(this).append("text")
     d3.select(inBox).append("text")
       .classed("boxText", true)
       .attr("id", textDragging.getAttribute("id"))
-      //.text(textObject[0][0].innerHTML)
-      .text(textDragging.__data__)
+      .text(textDragging.innerHTML)
       .style("fill", "#000000")
       .attr("data-index", textDragging.getAttribute("data-index"))
       .attr("dx", 3)
@@ -225,7 +221,7 @@ var boxMouseup = function(d) {
         return (this.parentNode.childElementCount - 2) * textHeight; 
       });
     d3.selectAll(".boxText").call(dragText);
-    textObject.remove();
+    d3.select(textDragging).remove();
     textDragging = null; 
     resizeBox(inBox);
     cleanUpList();
@@ -263,8 +259,6 @@ var editBoxTitle = function() {
 var changeElementText = function(textElement) {
   var titleEditGroup = d3.select(textElement).node().parentElement;
   var xform = getTransformation(d3.select(titleEditGroup).attr("transform"));
-  //var x = d3.transform(xform).translate[0];
-  //var y = d3.transform(xform).translate[1];
   var txt = textElement.textContent;
   d3.select(textElement).remove();
   var d3txt = d3.select("svg").append("foreignObject")
@@ -303,7 +297,6 @@ var getSelectedBoxText = function(box) {
 
 
 var removeTextItemFromBox = function() {
-  console.log("box.on(\"click\")");
   if (d3.event.shiftKey && !textDragging) {
     var selectedBoxText = getSelectedBoxText(this);
     if (!selectedBoxText) return;
@@ -329,21 +322,14 @@ var newBox = function(d) {
     .classed("boxG", true)
     .attr("transform", "translate(" + (width / 4) + "," + (height / 4) + ")")
     .on("mouseover", function(d) {
-      inBox = this;
-      console.log("box.on(\"mouseover\")");
       if (textDragging) {
+        inBox = this;
         d3.select(textDragging).style("fill", "#00ff00"); // Green -> droppable
       }
     })
     .on("mouseout", function(d) {
       inBox = null;
-      console.log("box.on(\"mouseout\")");
     })
-
-    .on("mouseup", boxMouseup)
-    //.on("mouseup", function(d) {
-     //  console.log("box.on(\"mouseup\")");
-    //})
     .on("click", removeTextItemFromBox);
   newBoxG.append("rect")
     .classed("box", true)
@@ -380,12 +366,14 @@ var saveBoxes = function() {
 };
 
 
+// Output a JSON file where the box titles are names, and the box contents are
+// values.
 var saveJSON = function() {
   var boxGroups = d3.selectAll(".boxG");
   var json = {};
   boxGroups.each(function(d, i) {
     var box = d3.select(this);
-    var name = box.select(".boxTitle")[0][0].textContent;
+    var name = box.select(".boxTitle")._groups[0][0].textContent;
     var vals = [];
     box.selectAll(".boxText").each(function(d, i) {
       vals.push(this.textContent);
@@ -440,7 +428,6 @@ d3.select("#headerDiv").append("button")
   .attr("id", "saveBtn")
   .text("Save Boxes")
   .on("click", saveJSON);
-  //.on("click", saveBoxes);
 
 d3.select("#headerDiv").append("button")
   .attr("id", "helpBtn")
