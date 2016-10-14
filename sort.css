@@ -39,6 +39,6 @@ button {
   z-index: 1;
 }
 
-.boxG {
-  pointer-events: all;
+.boxText {
+  pointer-events: none;
 }

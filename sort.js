@@ -165,7 +165,7 @@ document.ondrop = function(e) {
 var resizeBox = function(boxG) {
   var g = d3.select(boxG);
   var txts = g.selectAll(".boxText");
-  var nItems = txts._groups[0].length;
+  var nItems = txts._groups[0] ? txts._groups[0].length : 0;
   var width = nItems ? 0 : boxDefaultW;
   var height = nItems ? (textHeight * nItems) : boxDefaultH;
   for (var i = 0; i < nItems; i++) {
@@ -296,24 +296,22 @@ var getSelectedBoxText = function(box) {
 };
 
 
-var removeTextItemFromBox = function() {
-  if (d3.event.shiftKey && !textDragging) {
-    var selectedBoxText = getSelectedBoxText(this);
-    if (!selectedBoxText) return;
-    var followingElementId = getFollowingListElementId(selectedBoxText);
-    d3.select("#textListG").insert("text", "#" + followingElementId)
-	.classed("nodeText", true)
-	.attr("id", selectedBoxText.getAttribute("id"))
-	.attr("data-index", selectedBoxText.getAttribute("data-index"))
-	.style("fill", "#000000")
-	.text(selectedBoxText.textContent)
-	.on("mouseover", textMouseover)
-	.on("mouseleave", textMouseleave);
-    d3.selectAll(".nodeText").call(dragText);
-    d3.select(selectedBoxText).remove();
-    resizeBox(this);
-    cleanUpList();
-  }
+var removeTextItemFromBox = function(box) {
+  var selectedBoxText = getSelectedBoxText(box);
+  if (!selectedBoxText) return;
+  var followingElementId = getFollowingListElementId(selectedBoxText);
+  d3.select("#textListG").insert("text", "#" + followingElementId)
+      .classed("nodeText", true)
+      .attr("id", selectedBoxText.getAttribute("id"))
+      .attr("data-index", selectedBoxText.getAttribute("data-index"))
+      .style("fill", "#000000")
+      .text(selectedBoxText.textContent)
+      .on("mouseover", textMouseover)
+      .on("mouseleave", textMouseleave);
+  d3.selectAll(".nodeText").call(dragText);
+  d3.select(selectedBoxText).remove();
+  resizeBox(box);
+  cleanUpList();
 };
 
 
@@ -330,7 +328,11 @@ var newBox = function(d) {
     .on("mouseout", function(d) {
       inBox = null;
     })
-    .on("click", removeTextItemFromBox);
+    .on("click", function(d) {
+      if (d3.event.shiftKey && !textDragging) {
+        removeTextItemFromBox(this);
+      } 
+    });
   newBoxG.append("rect")
     .classed("box", true)
     .attr("x", 0)

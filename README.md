@@ -39,7 +39,7 @@ Shift-click on a text item inside a box to remove it from that box and restore i
 location in the list on the left.
 
 Save your work by clicking on the "Save Boxes" button, which brings up a standard file save
-dialog. The text output file that results is named SortedItems.txt by default, but call it what
+dialog. The JSON output file that results is named SortedItems.json by default, but call it what
 you wish.
 
 These instructions can be displayed by clicking on the "Help" button.
