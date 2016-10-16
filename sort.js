@@ -116,7 +116,7 @@ var createTextListElements = function(strings) {
       .attr("id", function(d) {
 	return "id" + id++;
       })
-      .attr("data-index", function(d) { // For re-inserting text item into list.
+      .attr("data-index", function(d) { // List re-insertion text item location
 	return dataIndex++;
       })
       .attr("x", padding)
@@ -210,12 +210,18 @@ var getFollowingListElementId = function(elt) {
 // the original text element from the list.
 var dropTextIntoBox = function(d) {
   if (textDragging) {
+    var str = textDragging.innerHTML;
     d3.select(inBox).append("text")
       .classed("boxText", true)
       .attr("id", textDragging.getAttribute("id"))
-      .text(textDragging.innerHTML)
+      .text(function() {
+	return str.substr(str.indexOf(' ') + 1);
+      })
       .style("fill", "#000000")
       .attr("data-index", textDragging.getAttribute("data-index"))
+      .attr("data-itemNum", function(d) { // Restore number for de-box/re-list
+	return str.split(".")[0];
+      })
       .attr("dx", 3)
       .attr("dy", function(d) {
         return (this.parentNode.childElementCount - 2) * textHeight; 
@@ -305,7 +311,10 @@ var removeTextItemFromBox = function(box) {
       .attr("id", selectedBoxText.getAttribute("id"))
       .attr("data-index", selectedBoxText.getAttribute("data-index"))
       .style("fill", "#000000")
-      .text(selectedBoxText.textContent)
+      .text(function(d) {
+	var num = selectedBoxText.getAttribute("data-itemNum");
+	return num + ". " + selectedBoxText.textContent; 
+      })
       .on("mouseover", textMouseover)
       .on("mouseleave", textMouseleave);
   d3.selectAll(".nodeText").call(dragText);
