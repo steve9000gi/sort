@@ -38,8 +38,8 @@ If more space in the window is needed for boxes, shift-drag to scroll the window
 Shift-click on a text item inside a box to remove it from that box and restore it to its former
 location in the list on the left.
 
-Save your work by clicking on the "Save Boxes" button, which brings up a standard file save
+Save your work by clicking on the "Save JSON" button, which brings up a standard file save
 dialog. The JSON output file that results is named SortedItems.json by default, but call it what
-you wish.
+you wish. Click on "Save Text" to get a text file version.
 
 These instructions can be displayed by clicking on the "Help" button.
