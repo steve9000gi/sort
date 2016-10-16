@@ -352,12 +352,12 @@ var newBox = function(d) {
 
 // Print the title and then the contents of each box to a text file, in DOM
 // order.
-var saveBoxes = function() {
+var saveText = function() {
   var text = "";
   var boxGroups = d3.selectAll(".boxG");
   boxGroups.each(function(d, i) {
     var box = d3.select(this);
-    text += box.select(".boxTitle")[0][0].textContent + ":\n";;
+    text += box.select(".boxTitle")._groups[0][0].textContent + ":\n";;
     box.selectAll(".boxText").each(function(d, i) {
       text += this.textContent + "\n";;
     }); 
@@ -368,7 +368,8 @@ var saveBoxes = function() {
 };
 
 
-// Output a JSON file where the box titles are names, and the box contents are
+// Output a JSON file where the box titles are names, and the contents of each
+// box appear as an array of string values.
 // values.
 var saveJSON = function() {
   var boxGroups = d3.selectAll(".boxG");
@@ -427,9 +428,12 @@ d3.select("#headerDiv").append("button")
   .on("click", newBox);
 
 d3.select("#headerDiv").append("button")
-  .attr("id", "saveBtn")
-  .text("Save Boxes")
+  .text("Save JSON")
   .on("click", saveJSON);
+
+d3.select("#headerDiv").append("button")
+  .text("Save Text")
+  .on("click", saveText);
 
 d3.select("#headerDiv").append("button")
   .attr("id", "helpBtn")
