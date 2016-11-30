@@ -210,18 +210,18 @@ var getFollowingListElementId = function(elt) {
 // the original text element from the list.
 var dropTextIntoBox = function(d) {
   if (textDragging) {
-    var str = textDragging.innerHTML;
+    // Don't use innerHTML: it encodes '&' as "&amp;" etc.
+    var data = textDragging.__data__;
+    var str = data ? data : textDragging.getAttribute("__data__");
+    var num = textDragging.innerHTML.split(".")[0];
     d3.select(inBox).append("text")
       .classed("boxText", true)
       .attr("id", textDragging.getAttribute("id"))
-      .text(function() {
-	return str.substr(str.indexOf(' ') + 1);
-      })
+      .text(str)
+      .attr("__data__", str)
       .style("fill", "#000000")
       .attr("data-index", textDragging.getAttribute("data-index"))
-      .attr("data-itemNum", function(d) { // Restore number for de-box/re-list
-	return str.split(".")[0];
-      })
+      .attr("data-itemNum", num) // Restore number for de-box/re-list
       .attr("dx", 3)
       .attr("dy", function(d) {
         return (this.parentNode.childElementCount - 2) * textHeight; 
@@ -310,6 +310,7 @@ var removeTextItemFromBox = function(box) {
       .classed("nodeText", true)
       .attr("id", selectedBoxText.getAttribute("id"))
       .attr("data-index", selectedBoxText.getAttribute("data-index"))
+      .attr("__data__", selectedBoxText.getAttribute("__data__"))
       .style("fill", "#000000")
       .text(function(d) {
 	var num = selectedBoxText.getAttribute("data-itemNum");
