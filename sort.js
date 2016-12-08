@@ -95,21 +95,97 @@ var textMouseover = function() {
 
 
 var textMouseleave = function() {
-       d3.select(this).style("fill", "#000000");
+  d3.select(this).style("fill", "#000000");
+};
+
+
+// Create an associative array from the current items in the list: keys are
+// node types, and values are arrays of text items that belong to each node
+// type.
+var buildJSONFromList = function() {
+  var json = new Array();
+  var isNextLineTitle = true;
+  var textItems = d3.selectAll(".nodeText");
+  var dataIndex = 0; // For every text item including category titles
+  var lineNum = 1;   // Running count of # of lines including category titles
+  var currKey = null;
+
+  textItems.each(function(d) {
+    if (d.length > 0) {
+      if (!isNextLineTitle) {     // new value for current key
+        if (currKey) {
+          json[currKey].push(d);
+        }
+      } else { // new key
+        currKey = d;
+        json[currKey] = new Array();
+        isNextLineTitle = !isNextLineTitle;
+      }
+      lineNum++;
+    } else {
+      isNextLineTitle = true;
+    }
+  });
+  return json;
+};
+
+
+// Argument "strings" is expected to be an array of strings in which headers, 
+// i.e. "catgeory titles",  are preceded by blank lines (other than the first,
+// which is the first string in the "strings" array. Those headers become keys,
+// the associated value for each is a flat array of the following elements in
+// "strings" up until the next blank line. The string that immediately follows
+// that blank line is expected to be the key for the next key/value pair.
+var buildJSONFromStrings = function(strings) {
+  var json = new Array();
+  var isNextLineTitle = true;
+  var dataIndex = 0; // For every text item including category titles
+  var lineNum = 1;   // Running count of # of lines including category titles
+  var currKey = null;
+
+  strings.forEach(function(d) {
+    if (d.length > 0) {
+      if (!isNextLineTitle) {     // new value for current key
+        if (currKey) {
+          json[currKey].push(d);
+        }
+      } else { // new key
+        currKey = d;
+        json[currKey] = new Array();
+        isNextLineTitle = !isNextLineTitle;
+      }
+      lineNum++;
+    } else {
+      isNextLineTitle = true;
+    }
+  });
+  return json;
 };
 
 
 // Returns the number of elements created, i.e., the number of lines of text.
-var createTextListElements = function(strings) {
+// Expects that each category title (i.e, header or SSM node type) is
+// immediately preceded by a blank line (excepting the first, which is of course
+// immediately preceded by nothing.)
+var createTextListElementsFromJSON = function(json) {
   var id = 0;        // .nodeText id attribute (includes category titles)
   var dataIndex = 0; // For every text item including category titles
   var lineNum = 1;   // Running count of # of lines including category titles
-  var i = 1;         // Numbers for text items in list excluding category titles
+  var ix = 1;        // Numbers for text items in list excluding category titles
   var isNextLineTitle = true;
+  var keys = Object.keys(json);
+  var list = Array();
+  for (var i = 0; i < keys.length; i++) {
+    list.push(keys[i]);
+    for (var j = 0; j < json[keys[i]].length; j++) {
+      list.push(json[keys[i]][j]);
+    }
+    list.push("");
+  }
   d3.select("svg").append("g")
     .attr("id", "textListG");
   d3.select("#textListG").selectAll(".nodeText")
-    .data(strings)
+    .data(list)
     .enter()
     .append("text")
       .classed("nodeText", true)
@@ -126,7 +202,7 @@ var createTextListElements = function(strings) {
       .style("fill", "#000000")
       .text(function(d) {
 	if ((d.length > 0) && (!isNextLineTitle)) {
-	  return i++ + ". " + d;
+	  return ix++ + ". " + d; // Number lines that aren't blank or titles
 	} else {
 	  isNextLineTitle = !isNextLineTitle;
 	  return d;
@@ -138,18 +214,43 @@ var createTextListElements = function(strings) {
 };
 
 
-// Display a dropped-in text file as a list along the left side of the window.
+// Assumes that the value in each key/value pair is a flat array. Results from
+// attempting to concatenate two json objects with different keys are 
+// unpredictable.
+var catJSONs = function(oldJsonObj, newJsonObj) {
+  var catJsonObj = Array();
+  var newKeys = Object.keys(newJsonObj);
+  for (var i = 0; i < newKeys.length; i++) {
+    var key = newKeys[i];
+    catJsonObj[key] = Array();
+    var numOldKeys = oldJsonObj[key] ? oldJsonObj[key].length : 0;
+    for (var j = 0; j < numOldKeys; j++) {
+      catJsonObj[key].push(oldJsonObj[key][j]);
+    }
+    var numNewKeys = newJsonObj[key] ? newJsonObj[key].length : 0;
+    for (var k = 0; k < numNewKeys; k++) {
+      catJsonObj[key].push(newJsonObj[key][k]);
+    }
+  }
+  return catJsonObj;
+};
+
+
+// Display the dropped-in text file as a list along the left side of the window.
 // Each line is a text object of class ".nodeText".
 document.ondrop = function(e) {
     e.preventDefault();  // Prevent browser from trying to run/display the file.
-    d3.selectAll(".nodeText").remove();
     var reader = new FileReader();
     var text;
     reader.onload = function(e) {
       text = e.target.result;
       var length = text.length;
       var split = text.split("\n"); 
-      var n = createTextListElements(split);
+      var newJsonObj = buildJSONFromStrings(split);
+      var oldJsonObj = buildJSONFromList();
+      var catJsonObj = catJSONs(oldJsonObj, newJsonObj);
+      d3.selectAll(".nodeText").remove();
+      var n = createTextListElementsFromJSON(catJsonObj);
       d3.select("svg")
         .attr("viewBox", function() {
           return "0, 0, " + (window.innerWidth * 2) + ", " + (n * textHeight);
@@ -302,6 +403,7 @@ var getSelectedBoxText = function(box) {
 };
 
 
+// Take a text item out of a box and put it back in the list.
 var removeTextItemFromBox = function(box) {
   var selectedBoxText = getSelectedBoxText(box);
   if (!selectedBoxText) return;
