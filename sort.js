@@ -7,6 +7,8 @@
 
 "use strict";
 
+var nextId = 0; // Global id accessed to ensure no duplicate ids in DOM.
+
 
 // See http://jsfiddle.net/Y8y7V/1/ for avoiding object jump to cursor.
 var dragText = d3.drag()
@@ -168,7 +170,7 @@ var buildJSONFromStrings = function(strings) {
 // immediately preceded by a blank line (excepting the first, which is of course
 // immediately preceded by nothing.)
 var createTextListElementsFromJSON = function(json) {
-  var id = 0;        // .nodeText id attribute (includes category titles)
+//  var id = 0;        // .nodeText id attribute (includes category titles)
   var dataIndex = 0; // For every text item including category titles
   var lineNum = 1;   // Running count of # of lines including category titles
   var ix = 1;        // Numbers for text items in list excluding category titles
@@ -190,7 +192,7 @@ var createTextListElementsFromJSON = function(json) {
     .append("text")
       .classed("nodeText", true)
       .attr("id", function(d) {
-	return "id" + id++;
+	return "id" + nextId++;
       })
       .attr("data-index", function(d) { // List re-insertion text item location
 	return dataIndex++;
