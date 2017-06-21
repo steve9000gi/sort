@@ -133,7 +133,7 @@ var buildJSONFromList = function() {
 
 
 // Argument "strings" is expected to be an array of strings in which headers, 
-// i.e. "catgeory titles",  are preceded by blank lines (other than the first,
+// i.e. "category titles",  are preceded by blank lines (other than the first,
 // which is the first string in the "strings" array. Those headers become keys,
 // the associated value for each is a flat array of the following elements in
 // "strings" up until the next blank line. The string that immediately follows
@@ -238,6 +238,17 @@ var catJSONs = function(oldJsonObj, newJsonObj) {
 };
 
 
+// https://stackoverflow.com/questions/9804777/how-to-test-if-a-string-is-json-or-not
+function isJson(str) {
+    try {
+        var json = JSON.parse(str);
+    } catch (e) {
+        return false;
+    }
+    return json;
+}
+
+
 // Display the dropped-in text file as a list along the left side of the window.
 // Each line is a text object of class ".nodeText".
 document.ondrop = function(e) {
@@ -246,9 +257,16 @@ document.ondrop = function(e) {
     var text;
     reader.onload = function(e) {
       text = e.target.result;
-      var length = text.length;
-      var split = text.split("\n"); 
-      var newJsonObj = buildJSONFromStrings(split);
+      var json = isJson(text);
+      var newJsonObj = null;
+      if (json) {
+        console.log("dropped file is JSON.");
+        newJsonObj = json.unsorted;
+      } else {
+        console.error("dropped file is not JSON.");
+        var split = text.split("\n"); 
+        var newJsonObj = buildJSONFromStrings(split);
+      }
       var oldJsonObj = buildJSONFromList();
       var catJsonObj = catJSONs(oldJsonObj, newJsonObj);
       d3.selectAll(".nodeText").remove();
