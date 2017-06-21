@@ -219,22 +219,22 @@ var createTextListElementsFromJSON = function(json) {
 // Assumes that the value in each key/value pair is a flat array. Results from
 // attempting to concatenate two json objects with different keys are 
 // unpredictable.
-var catJSONs = function(oldJsonObj, newJsonObj) {
-  var catJsonObj = Array();
-  var newKeys = Object.keys(newJsonObj);
+var catJSONs = function(oldJsonListObj, newJsonListObj) {
+  var catJsonListObj = Array();
+  var newKeys = Object.keys(newJsonListObj);
   for (var i = 0; i < newKeys.length; i++) {
     var key = newKeys[i];
-    catJsonObj[key] = Array();
-    var numOldKeys = oldJsonObj[key] ? oldJsonObj[key].length : 0;
+    catJsonListObj[key] = Array();
+    var numOldKeys = oldJsonListObj[key] ? oldJsonListObj[key].length : 0;
     for (var j = 0; j < numOldKeys; j++) {
-      catJsonObj[key].push(oldJsonObj[key][j]);
+      catJsonListObj[key].push(oldJsonListObj[key][j]);
     }
-    var numNewKeys = newJsonObj[key] ? newJsonObj[key].length : 0;
+    var numNewKeys = newJsonListObj[key] ? newJsonListObj[key].length : 0;
     for (var k = 0; k < numNewKeys; k++) {
-      catJsonObj[key].push(newJsonObj[key][k]);
+      catJsonListObj[key].push(newJsonListObj[key][k]);
     }
   }
-  return catJsonObj;
+  return catJsonListObj;
 };
 
 
@@ -258,19 +258,19 @@ document.ondrop = function(e) {
     reader.onload = function(e) {
       text = e.target.result;
       var json = isJson(text);
-      var newJsonObj = null;
+      var newJsonListObj = null;
       if (json) {
         console.log("dropped file is JSON.");
-        newJsonObj = json.unsorted;
+        newJsonListObj = json.unsorted;
       } else {
         console.error("dropped file is not JSON.");
         var split = text.split("\n"); 
-        var newJsonObj = buildJSONFromStrings(split);
+        var newJsonListObj = buildJSONFromStrings(split);
       }
-      var oldJsonObj = buildJSONFromList();
-      var catJsonObj = catJSONs(oldJsonObj, newJsonObj);
+      var oldJsonListObj = buildJSONFromList();
+      var catJsonListObj = catJSONs(oldJsonListObj, newJsonListObj);
       d3.selectAll(".nodeText").remove();
-      var n = createTextListElementsFromJSON(catJsonObj);
+      var n = createTextListElementsFromJSON(catJsonListObj);
       d3.select("svg")
         .attr("viewBox", function() {
           return "0, 0, " + (window.innerWidth * 2) + ", " + (n * textHeight);
@@ -505,7 +505,7 @@ var saveText = function() {
 // values.
 var saveJSON = function() {
   var boxGroups = d3.selectAll(".boxG");
-  var json = {};
+  var jsonBoxes = {};
   boxGroups.each(function(d, i) {
     var box = d3.select(this);
     var name = box.select(".boxTitle")._groups[0][0].textContent;
@@ -513,11 +513,14 @@ var saveJSON = function() {
     box.selectAll(".boxText").each(function(d, i) {
       vals.push(this.textContent);
     });
-    json[name] = vals;
+    jsonBoxes[name] = vals;
   });
-  var blob = new Blob([window.JSON.stringify(json)],
+  var topJson = {};
+  topJson["sorted"] = jsonBoxes;
+  topJson["unsorted"] = {};
+  var blob = new Blob([window.JSON.stringify(topJson)],
                       {type: "text/plain;charset=utf-8"});
-  window.saveAs(blob, "SortedItems.json");
+  window.saveAs(blob, "coded.json");
 };
 
 
