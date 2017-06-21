@@ -101,11 +101,11 @@ var textMouseleave = function() {
 };
 
 
-// Create an associative array from the current items in the list: keys are
-// node types, and values are arrays of text items that belong to each node
-// type.
+// Create a JSON object, comprised of a sequence of key-value pairs, from the
+// current items in the list: keys are node types (e.g., "ROLES", "NEEDS"), and
+// values are arrays of text items that belong to each node type.
 var buildJSONFromList = function() {
-  var json = new Array();
+  var json = {};
   var isNextLineTitle = true;
   var textItems = d3.selectAll(".nodeText");
   var dataIndex = 0; // For every text item including category titles
@@ -517,7 +517,7 @@ var saveJSON = function() {
   });
   var topJson = {};
   topJson["sorted"] = jsonBoxes;
-  topJson["unsorted"] = {};
+  topJson["unsorted"] = buildJSONFromList();
   var blob = new Blob([window.JSON.stringify(topJson)],
                       {type: "text/plain;charset=utf-8"});
   window.saveAs(blob, "coded.json");
