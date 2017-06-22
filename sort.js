@@ -113,7 +113,7 @@ var buildJSONFromList = function() {
   var currKey = null;
 
   textItems.each(function(d) {
-    if (d.length > 0) {
+    if (d && d.length > 0) {
       if (!isNextLineTitle) {     // new value for current key
         if (currKey) {
           json[currKey].push(d);
@@ -286,11 +286,11 @@ document.ondrop = function(e) {
 var resizeBox = function(boxG) {
   var g = d3.select(boxG);
   var txts = g.selectAll(".boxText");
-  var nItems = txts._groups[0] ? txts._groups[0].length : 0;
+  var nItems = txts.nodes() ? txts.nodes().length : 0;
   var width = nItems ? 0 : boxDefaultW;
   var height = nItems ? (textHeight * nItems) : boxDefaultH;
   for (var i = 0; i < nItems; i++) {
-    var currentItem = txts._groups[0][i];
+    var currentItem = txts.nodes()[i];
     d3.select(currentItem).attr("dy", (1 + i) * textHeight);
     var bbox = currentItem.getBBox();
     width = Math.max(bbox.width, width);
@@ -305,8 +305,8 @@ var resizeBox = function(boxG) {
 // window and remove unwanted blank lines.
 var cleanUpList = function() {
   var listTexts = d3.selectAll(".nodeText");
-  for (var i = 0; i < listTexts._groups[0].length; i++) {
-    d3.select(listTexts._groups[0][i])
+  for (var i = 0; i < listTexts.nodes().length; i++) {
+    d3.select(listTexts.nodes()[i])
       .attr("x", padding)
       .attr("y", function(d) {
         return textHeight * (i + 1);
@@ -317,7 +317,7 @@ var cleanUpList = function() {
     
 // Return the id of the text element that should be next after arg "elt".
 var getFollowingListElementId = function(elt) {
-  var textArray = d3.select("#textListG")._groups[0][0].childNodes;
+  var textArray = d3.select("#textListG").nodes()[0].childNodes;
   var index = parseInt(elt.getAttribute("data-index"));
   var i = 0;
   while (textArray[i].getAttribute("data-index") < index) {
@@ -419,7 +419,7 @@ var changeElementText = function(textElement) {
 var getSelectedBoxText = function(box) {
   var i = Math.floor(d3.mouse(box)[1] / textHeight);
   var boxTexts = d3.select(box).selectAll(".boxText");
-  return boxTexts._groups[0][i];
+  return boxTexts.nodes()[i];
 };
 
 
@@ -489,7 +489,7 @@ var saveText = function() {
   var boxGroups = d3.selectAll(".boxG");
   boxGroups.each(function(d, i) {
     var box = d3.select(this);
-    text += box.select(".boxTitle")._groups[0][0].textContent + ":\n";;
+    text += box.select(".boxTitle").nodes()[0].textContent + ":\n";;
     box.selectAll(".boxText").each(function(d, i) {
       text += this.textContent + "\n";;
     }); 
@@ -508,7 +508,7 @@ var saveJSON = function() {
   var jsonBoxes = {};
   boxGroups.each(function(d, i) {
     var box = d3.select(this);
-    var name = box.select(".boxTitle")._groups[0][0].textContent;
+    var name = box.select(".boxTitle").nodes()[0].textContent;
     var vals = [];
     box.selectAll(".boxText").each(function(d, i) {
       vals.push(this.textContent);
@@ -525,7 +525,6 @@ var saveJSON = function() {
 
 
 // Main:
-
 var textDragging = null;
 var inBox = null;
 var textHeight = 16;
