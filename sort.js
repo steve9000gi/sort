@@ -115,8 +115,12 @@ var buildJSONFromList = function() {
   textItems.each(function(d) {
     if (d && d.length > 0) {
       if (!isNextLineTitle) {     // new value for current key
+        var currTextObj = {};
+        currTextObj["text"] = d;
+        
         if (currKey) {
-          json[currKey].push(d);
+          //json[currKey].push(d);
+          json[currKey].push(currTextObj);
         }
       } else { // new key
         currKey = d;
@@ -253,24 +257,29 @@ function isJson(str) {
 // Each line is a text object of class ".nodeText".
 document.ondrop = function(e) {
     e.preventDefault();  // Prevent browser from trying to run/display the file.
+    if ((d3.selectAll(".nodeText").nodes().length > 0) ||
+        (d3.selectAll(".boxG").nodes().length > 0)) {
+      var retVal = confirm("You're already working on a list. Do you want to\nclose it and open this new list?");
+      if (retVal == false) {
+        return;
+      }
+    }
     var reader = new FileReader();
     var text;
     reader.onload = function(e) {
       text = e.target.result;
       var json = isJson(text);
-      var newJsonListObj = null;
+      var jsonListObj = null;
       if (json) {
         console.log("dropped file is JSON.");
-        newJsonListObj = json.unsorted;
+        jsonListObj = json.unsorted;
       } else {
         console.error("dropped file is not JSON.");
         var split = text.split("\n"); 
-        var newJsonListObj = buildJSONFromStrings(split);
+        var jsonListObj = buildJSONFromStrings(split);
       }
-      var oldJsonListObj = buildJSONFromList();
-      var catJsonListObj = catJSONs(oldJsonListObj, newJsonListObj);
       d3.selectAll(".nodeText").remove();
-      var n = createTextListElementsFromJSON(catJsonListObj);
+      var n = createTextListElementsFromJSON(jsonListObj);
       d3.select("svg")
         .attr("viewBox", function() {
           return "0, 0, " + (window.innerWidth * 2) + ", " + (n * textHeight);
