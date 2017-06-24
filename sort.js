@@ -21,8 +21,8 @@ var dragText = d3.drag()
       textDragging = this;
       d3.select("body").style("cursor", "move");
       d3.select(this)
-	.attr("x", d3.event.x)
-	.attr("y", d3.event.y);
+        .attr("x", d3.event.x)
+        .attr("y", d3.event.y);
     }
   })
   .on("end", function(d) {
@@ -117,14 +117,19 @@ var buildJSONFromList = function() {
       if (!isNextLineTitle) {     // new value for current key
         var currTextObj = {};
         currTextObj["text"] = d;
-        
+        currTextObj["id"] = this.id;
+        currTextObj["innerHTML"] = this.innerHTML;
         if (currKey) {
           //json[currKey].push(d);
-          json[currKey].push(currTextObj);
+          json[currKey]["textItems"].push(currTextObj);
         }
       } else { // new key
         currKey = d;
-        json[currKey] = new Array();
+	// Need to get the id of the textItem whose text = currKey
+	// Need to create id object
+        json[currKey] = {};
+        json[currKey]["textItems"] =  new Array();
+        json[currKey]["id"] = this.id;
         isNextLineTitle = !isNextLineTitle;
       }
       lineNum++;
@@ -180,39 +185,52 @@ var createTextListElementsFromJSON = function(json) {
   var ix = 1;        // Numbers for text items in list excluding category titles
   var isNextLineTitle = true;
   var keys = Object.keys(json);
+  var ids = Array();
   var list = Array();
+  var innerHTMLs = Array();
   for (var i = 0; i < keys.length; i++) {
     list.push(keys[i]);
     for (var j = 0; j < json[keys[i]].length; j++) {
+      //list.push(json[keys[i]][j].text);
       list.push(json[keys[i]][j]);
+      ids.push(json[keys[i]][j].id);
+      innerHTMLs.push(json[keys[i]][j].innerHTML);
     }
     list.push("");
+    ids.push(null);
+    innerHTMLs.push(null);
   }
+  //var inData = [{"list": list}, {"ids": ids}, {"innerHTMLs": innerHTMLs}];
+  var inData = Array();
+  inData.push({"list": list});
+  inData.push({"ids": ids});
+  inData.push({"innerHTMLs": innerHTMLs});
   d3.select("svg").append("g")
     .attr("id", "textListG");
   d3.select("#textListG").selectAll(".nodeText")
+    //.data(json)
     .data(list)
     .enter()
     .append("text")
       .classed("nodeText", true)
       .attr("id", function(d) {
-	return "id" + nextId++;
+        return "id" + nextId++;
       })
       .attr("data-index", function(d) { // List re-insertion text item location
-	return dataIndex++;
+        return dataIndex++;
       })
       .attr("x", padding)
       .attr("y", function(d) {
-	return textHeight * lineNum++;
+        return textHeight * lineNum++;
       })
       .style("fill", "#000000")
       .text(function(d) {
-	if ((d.length > 0) && (!isNextLineTitle)) {
-	  return ix++ + ". " + d; // Number lines that aren't blank or titles
-	} else {
-	  isNextLineTitle = !isNextLineTitle;
-	  return d;
-	}
+        if ((d.length > 0) && (!isNextLineTitle)) {
+          return ix++ + ". " + d; // Number lines that aren't blank or titles
+        } else {
+          isNextLineTitle = !isNextLineTitle;
+          return d;
+        }
       })
       .on("mouseover", textMouseover)
       .on("mouseleave", textMouseleave);
@@ -444,8 +462,8 @@ var removeTextItemFromBox = function(box) {
       .attr("__data__", selectedBoxText.getAttribute("__data__"))
       .style("fill", "#000000")
       .text(function(d) {
-	var num = selectedBoxText.getAttribute("data-itemNum");
-	return num + ". " + selectedBoxText.textContent; 
+        var num = selectedBoxText.getAttribute("data-itemNum");
+        return num + ". " + selectedBoxText.textContent; 
       })
       .on("mouseover", textMouseover)
       .on("mouseleave", textMouseleave);
