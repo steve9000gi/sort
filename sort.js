@@ -360,27 +360,15 @@ var getFollowingListElementId = function(elt) {
 // the original text element from the list.
 var dropTextIntoBox = function(d) {
   if (textDragging) {
-    // Don't use innerHTML: it encodes '&' as "&amp;" etc.
-    // And maybe don't use textContent: everything from '&' on disappears.
-    //var data = textDragging.__data__;
-    //var data = textDragging.__data__  ? textDragging.__data__
-    //                                  : textDragging.getAttribute("__data__");
+    // Don't use textDragging.innerHTML: it encodes '&' as "&amp;" etc.
+    // Don't use textDragging.textContent: everything from '&' on disappears.
     var data = d3.select(textDragging).datum();
-    //var str = data ? data : textDragging.getAttribute("__data__");
-    //var str = textDragging.textContent.split(" ")[1];
-    var letsStopHereAndSeeWhatDataLooksLike = data;
     var str = data.innerHTML.split(/ (.+)/)[1]; // first occurrence of " " only
     var num = textDragging.innerHTML.split(".")[0];
     d3.select(inBox).append("text")
       .classed("boxText", true)
       .attr("id", textDragging.getAttribute("id"))
       .text(str)
-      //.attr("__data__", str)
-      /*
-      .attr("__data__", function(d) {
-        return data;
-      })
-      */
       .datum(data)
       .style("fill", "#000000")
       .attr("data-index", textDragging.getAttribute("data-index"))
@@ -474,7 +462,6 @@ var removeTextItemFromBox = function(box) {
       .classed("nodeText", true)
       .attr("id", selectedBoxText.getAttribute("id"))
       .attr("data-index", selectedBoxText.getAttribute("data-index"))
-      //.attr("__data__", selectedBoxText.getAttribute("__data__"))
       .datum(d3.select(selectedBoxText).datum())
       .style("fill", "#000000")
       .text(function(d) {
