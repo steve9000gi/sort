@@ -103,35 +103,23 @@ var textMouseleave = function() {
 
 // Create a JSON object, comprised of a sequence of key-value pairs, from the
 // current items in the list: keys are node types (e.g., "ROLES", "NEEDS"), and
-// values are arrays of text items that belong to each node type.
+// values are arrays of text item objects that belong to each node type.
 var buildJSONFromList = function() {
   var json = {};
-  var isNextLineTitle = true;
-  var textItems = d3.selectAll(".nodeText");
   var dataIndex = 0; // For every text item including category titles
-  var lineNum = 1;   // Running count of # of lines including category titles
   var currKey = null;
-
-  textItems.each(function(d) {
-    if (d && d.length > 0) {
-      if (!isNextLineTitle) {     // new value for current key
-        var currTextObj = {};
-        currTextObj["text"] = d;
-        currTextObj["id"] = this.id;
-        currTextObj["innerHTML"] = this.innerHTML;
+  d3.selectAll(".nodeText").each(function(d) {
+    if (d && d.text.length > 0) {
+      if (!d.isCode) { // add (object) element to (array) value for current key
         if (currKey) {
-          json[currKey]["textItems"].push(currTextObj);
+          json[currKey]["textItems"].push(d);
         }
       } else { // new key
-        currKey = d;
+        currKey = d.text;
         json[currKey] = {};
         json[currKey]["textItems"] =  new Array();
         json[currKey]["id"] = this.id;
-        isNextLineTitle = !isNextLineTitle;
       }
-      lineNum++;
-    } else {
-      isNextLineTitle = true;
     }
   });
   return json;
@@ -187,14 +175,15 @@ var createTextListElementsFromJSON = function(json) {
     // First push object representing code:
     list.push({ "id": json[keys[i]].id,
                 "text": keys[i],
-                "innerHTML": keys[i]
+                "innerHTML": keys[i],
+                "isCode": true
               });
     var nTextItems = json[keys[i]].textItems.length;
     // Then for each code push object for each associated text item:
     for (var j = 0; j < nTextItems; j++) {
       list.push(json[keys[i]].textItems[j]);
     }
-    list.push(null); // blank line precedes all codes but the first
+    //list.push(null); // blank line precedes all codes but the first
   }
   d3.select("svg").append("g")
     .attr("id", "textListG");
