@@ -120,13 +120,10 @@ var buildJSONFromList = function() {
         currTextObj["id"] = this.id;
         currTextObj["innerHTML"] = this.innerHTML;
         if (currKey) {
-          //json[currKey].push(d);
           json[currKey]["textItems"].push(currTextObj);
         }
       } else { // new key
         currKey = d;
-	// Need to get the id of the textItem whose text = currKey
-	// Need to create id object
         json[currKey] = {};
         json[currKey]["textItems"] =  new Array();
         json[currKey]["id"] = this.id;
@@ -142,11 +139,12 @@ var buildJSONFromList = function() {
 
 
 // Argument "strings" is expected to be an array of strings in which headers, 
-// i.e. "category titles",  are preceded by blank lines (other than the first,
-// which is the first string in the "strings" array. Those headers become keys,
-// the associated value for each is a flat array of the following elements in
-// "strings" up until the next blank line. The string that immediately follows
-// that blank line is expected to be the key for the next key/value pair.
+// i.e. category titles or "codes," are preceded by blank lines (other than the
+// first, which is the first string in the "strings" array. Those headers become
+// keys, the associated value for each is a flat array of the following elements
+// in parameter "strings" up until the next blank line. The string that
+// immediately follows that blank line is expected to be the key for the next
+// key/value pair.
 var buildJSONFromStrings = function(strings) {
   var json = new Array();
   var isNextLineTitle = true;
@@ -175,46 +173,42 @@ var buildJSONFromStrings = function(strings) {
 
 
 // Returns the number of elements created, i.e., the number of lines of text.
-// Expects that each category title (i.e, header or SSM node type) is
+// Expects that each category title (i.e, "coder": header or SSM node type) is
 // immediately preceded by a blank line (excepting the first, which is of course
-// immediately preceded by nothing.)
+// immediately preceded by nothing).
 var createTextListElementsFromJSON = function(json) {
-//  var id = 0;        // .nodeText id attribute (includes category titles)
   var dataIndex = 0; // For every text item including category titles
   var lineNum = 1;   // Running count of # of lines including category titles
   var ix = 1;        // Numbers for text items in list excluding category titles
   var isNextLineTitle = true;
   var keys = Object.keys(json);
-  var ids = Array();
-  var list = Array();
-  var innerHTMLs = Array();
+  var list = Array(); // objects representing text items to be inserted into DOM
   for (var i = 0; i < keys.length; i++) {
-    list.push(keys[i]);
-    for (var j = 0; j < json[keys[i]].length; j++) {
-      //list.push(json[keys[i]][j].text);
-      list.push(json[keys[i]][j]);
-      ids.push(json[keys[i]][j].id);
-      innerHTMLs.push(json[keys[i]][j].innerHTML);
+    // First push object representing code:
+    list.push({ "id": json[keys[i]].id,
+                "text": keys[i],
+                "innerHTML": keys[i]
+              });
+    var nTextItems = json[keys[i]].textItems.length;
+    // Then for each code push object for each associated text item:
+    for (var j = 0; j < nTextItems; j++) {
+      list.push(json[keys[i]].textItems[j]);
     }
-    list.push("");
-    ids.push(null);
-    innerHTMLs.push(null);
+    list.push(null); // blank line precedes all codes but the first
   }
-  //var inData = [{"list": list}, {"ids": ids}, {"innerHTMLs": innerHTMLs}];
-  var inData = Array();
-  inData.push({"list": list});
-  inData.push({"ids": ids});
-  inData.push({"innerHTMLs": innerHTMLs});
   d3.select("svg").append("g")
     .attr("id", "textListG");
   d3.select("#textListG").selectAll(".nodeText")
-    //.data(json)
     .data(list)
     .enter()
     .append("text")
       .classed("nodeText", true)
       .attr("id", function(d) {
-        return "id" + nextId++;
+        if (d && d.id) {
+          return d.id;
+        } else {
+          return "id" + nextId++;
+        }
       })
       .attr("data-index", function(d) { // List re-insertion text item location
         return dataIndex++;
@@ -225,12 +219,19 @@ var createTextListElementsFromJSON = function(json) {
       })
       .style("fill", "#000000")
       .text(function(d) {
+        if (d && d.innerHTML) {
+          return d.innerHTML;
+        } else {
+          return "";
+        }
+        /*
         if ((d.length > 0) && (!isNextLineTitle)) {
           return ix++ + ". " + d; // Number lines that aren't blank or titles
         } else {
           isNextLineTitle = !isNextLineTitle;
           return d;
         }
+        */
       })
       .on("mouseover", textMouseover)
       .on("mouseleave", textMouseleave);
@@ -277,7 +278,8 @@ document.ondrop = function(e) {
     e.preventDefault();  // Prevent browser from trying to run/display the file.
     if ((d3.selectAll(".nodeText").nodes().length > 0) ||
         (d3.selectAll(".boxG").nodes().length > 0)) {
-      var retVal = confirm("You're already working on a list. Do you want to\nclose it and open this new list?");
+      var retVal = confirm("You're already working on a list. Do you want to "
+          + "close it and open this new list?");
       if (retVal == false) {
         return;
       }
@@ -359,14 +361,27 @@ var getFollowingListElementId = function(elt) {
 var dropTextIntoBox = function(d) {
   if (textDragging) {
     // Don't use innerHTML: it encodes '&' as "&amp;" etc.
-    var data = textDragging.__data__;
-    var str = data ? data : textDragging.getAttribute("__data__");
+    // And maybe don't use textContent: everything from '&' on disappears.
+    //var data = textDragging.__data__;
+    //var data = textDragging.__data__  ? textDragging.__data__
+    //                                  : textDragging.getAttribute("__data__");
+    var data = d3.select(textDragging).datum();
+    //var str = data ? data : textDragging.getAttribute("__data__");
+    //var str = textDragging.textContent.split(" ")[1];
+    var letsStopHereAndSeeWhatDataLooksLike = data;
+    var str = data.innerHTML.split(/ (.+)/)[1]; // first occurrence of " " only
     var num = textDragging.innerHTML.split(".")[0];
     d3.select(inBox).append("text")
       .classed("boxText", true)
       .attr("id", textDragging.getAttribute("id"))
       .text(str)
-      .attr("__data__", str)
+      //.attr("__data__", str)
+      /*
+      .attr("__data__", function(d) {
+        return data;
+      })
+      */
+      .datum(data)
       .style("fill", "#000000")
       .attr("data-index", textDragging.getAttribute("data-index"))
       .attr("data-itemNum", num) // Restore number for de-box/re-list
@@ -459,7 +474,8 @@ var removeTextItemFromBox = function(box) {
       .classed("nodeText", true)
       .attr("id", selectedBoxText.getAttribute("id"))
       .attr("data-index", selectedBoxText.getAttribute("data-index"))
-      .attr("__data__", selectedBoxText.getAttribute("__data__"))
+      //.attr("__data__", selectedBoxText.getAttribute("__data__"))
+      .datum(d3.select(selectedBoxText).datum())
       .style("fill", "#000000")
       .text(function(d) {
         var num = selectedBoxText.getAttribute("data-itemNum");
