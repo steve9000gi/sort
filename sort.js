@@ -106,7 +106,6 @@ var textMouseleave = function() {
 // values are arrays of text item objects that belong to each node type.
 var buildJSONFromList = function() {
   var json = {};
-  var dataIndex = 0; // For every text item including category titles
   var currKey = null;
   d3.selectAll(".nodeText").each(function(d) {
     if (d && d.text && d.text.length > 0) {
@@ -132,6 +131,25 @@ var buildJSONFromList = function() {
 };
 
 
+// Create a JSON object, comprised of a sequence of key-value pairs, from the
+// current boxes: keys are box titles, and values are arrays of text item
+// objects that belong to each box.
+var buildJSONFromBoxes = function() {
+  var boxGroups = d3.selectAll(".boxG");
+  var json = {};
+  boxGroups.each(function(d, i) {
+    var box = d3.select(this);
+    var name = box.select(".boxTitle").nodes()[0].textContent;
+    var vals = [];
+    box.selectAll(".boxText").each(function(d, i) {
+      vals.push(this.textContent);
+    });
+    json[name] = vals;
+  });
+  return json;
+};
+
+
 // Argument "strings" is expected to be an array of strings in which headers, 
 // i.e. category titles or "codes," are preceded by blank lines (other than the
 // first, which is the first string in the "strings" array. Those headers become
@@ -142,10 +160,8 @@ var buildJSONFromList = function() {
 var buildJSONFromStrings = function(strings) {
   var json = new Array();
   var isNextLineTitle = true;
-  var dataIndex = 0; // For every text item including category titles
   var lineNum = 1;   // Running count of # of lines including category titles
   var currKey = null;
-
   strings.forEach(function(d) {
     if (d.length > 0) {
       if (!isNextLineTitle) {     // new value for current key
@@ -223,14 +239,6 @@ var createTextListElementsFromJSON = function(json) {
         } else {
           return ix++ + ". " + d.text; // Number lines that aren't titles
         }
-        /*
-        if ((d.length > 0) && (!isNextLineTitle)) {
-          return ix++ + ". " + d; // Number lines that aren't blank or titles
-        } else {
-          isNextLineTitle = !isNextLineTitle;
-          return d;
-        }
-        */
       })
       .on("mouseover", textMouseover)
       .on("mouseleave", textMouseleave);
@@ -531,21 +539,9 @@ var saveText = function() {
 
 // Output a JSON file where the box titles are names, and the contents of each
 // box appear as an array of string values.
-// values.
 var saveJSON = function() {
-  var boxGroups = d3.selectAll(".boxG");
-  var jsonBoxes = {};
-  boxGroups.each(function(d, i) {
-    var box = d3.select(this);
-    var name = box.select(".boxTitle").nodes()[0].textContent;
-    var vals = [];
-    box.selectAll(".boxText").each(function(d, i) {
-      vals.push(this.textContent);
-    });
-    jsonBoxes[name] = vals;
-  });
   var topJson = {};
-  topJson["sorted"] = jsonBoxes;
+  topJson["sorted"] = buildJSONFromBoxes();
   topJson["unsorted"] = buildJSONFromList();
   var blob = new Blob([window.JSON.stringify(topJson)],
                       {type: "text/plain;charset=utf-8"});
