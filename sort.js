@@ -116,8 +116,8 @@ var buildJSONFromList = function() {
         json[currKey]["id"] = this.id;
       } else { // add (object) element to (array) value for current key
         if (currKey) {
-          if (!d.innerHTML) {
-            d.innerHTML = this.innerHTML;
+          if (!d.numberedText) {
+            d.numberedText = this.innerHTML;
           }
           if (!d.id) {
             d.id = this.id;
@@ -133,19 +133,24 @@ var buildJSONFromList = function() {
 
 // Create a JSON object, comprised of a sequence of key-value pairs, from the
 // current boxes: keys are box titles, and values are arrays of text item
-// objects that belong to each box.
+// objects that belong to each box, plus the transform that determines where
+// each box is located in the browser window.
 var buildJSONFromBoxes = function() {
   var json = {};
-  d3.selectAll(".boxG").each(function(d, i) {
-// 2do: add transform values (transX, transY) for each box:
+  d3.selectAll(".boxG").each(function(d) {
     var box = d3.select(this);
-    var name = box.select(".boxTitle").nodes()[0].textContent;
-    var vals = [];
-// 2do: create an object for each text item containing text, innerHTML, and id: 
-    box.selectAll(".boxText").each(function(d, i) {
-      vals.push(this.textContent);
+    var boxTitle = box.select(".boxTitle").nodes()[0].textContent;
+    json[boxTitle] = {};
+    var xform = box.nodes()[0].getAttribute("transform");
+    json[boxTitle]["xform"] = xform;
+    json[boxTitle]["textItems"] =  new Array();
+    box.selectAll(".boxText").each(function(d) {
+      var textItem = {};
+      textItem["text"] = d.text;
+      textItem["id"] = this.id;
+      textItem["numberedText"] = d.numberedText;
+      json[boxTitle]["textItems"].push(textItem);
     });
-    json[name] = vals;
   });
   return json;
 };
@@ -189,14 +194,14 @@ var buildListArray = function(json) {
     // First push object representing "code":
     list.push({ "id": json[keys[i]].id,
                 "text": keys[i],
-                "innerHTML": keys[i],
+                "numberedText": keys[i],
                 "isCode": true
               });
     var nTextItems = json[keys[i]].textItems.length;
     // Then for each code push object for each associated text item:
     for (var j = 0; j < nTextItems; j++) {
-      if (!json[keys[i]].textItems[j].innerHTML) {
-        json[keys[i]].textItems[j].innerHTML = ix++ + ". "
+      if (!json[keys[i]].textItems[j].numberedText) {
+        json[keys[i]].textItems[j].numberedText = ix++ + ". "
           + json[keys[i]].textItems[j].text;
       }
       list.push(json[keys[i]].textItems[j]);
@@ -239,8 +244,8 @@ var createTextListElementsFromJSON = function(json) {
       })
       .style("fill", "#000000")
       .text(function(d) {
-        if (d && d.innerHTML) {
-          return d.innerHTML;
+        if (d && d.numberedText) {
+          return d.numberedText;
         } else {
           return ix++ + ". " + d.text; // Number lines that aren't titles
         }
@@ -374,16 +379,12 @@ var getFollowingListElementId = function(elt) {
 // the original text element from the list.
 var dropTextIntoBox = function(d) {
   if (textDragging) {
-    // Don't use textDragging.innerHTML: it encodes '&' as "&amp;" etc.
-    // Don't use textDragging.textContent: everything from '&' on disappears.
-    var data = d3.select(textDragging).datum();
-    var str = data.innerHTML.split(/ (.+)/)[1]; // first occurrence of " " only
-    var num = textDragging.innerHTML.split(".")[0];
+    var num = d.numberedText.split(".")[0];
     d3.select(inBox).append("text")
       .classed("boxText", true)
       .attr("id", textDragging.getAttribute("id"))
-      .text(str)
-      .datum(data)
+      .text(d.text)
+      .datum(d)
       .style("fill", "#000000")
       .attr("data-index", textDragging.getAttribute("data-index"))
       .attr("data-itemNum", num) // Restore number for de-box/re-list
