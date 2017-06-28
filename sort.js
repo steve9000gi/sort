@@ -135,12 +135,13 @@ var buildJSONFromList = function() {
 // current boxes: keys are box titles, and values are arrays of text item
 // objects that belong to each box.
 var buildJSONFromBoxes = function() {
-  var boxGroups = d3.selectAll(".boxG");
   var json = {};
-  boxGroups.each(function(d, i) {
+  d3.selectAll(".boxG").each(function(d, i) {
+// 2do: add transform values (transX, transY) for each box:
     var box = d3.select(this);
     var name = box.select(".boxTitle").nodes()[0].textContent;
     var vals = [];
+// 2do: create an object for each text item containing text, innerHTML, and id: 
     box.selectAll(".boxText").each(function(d, i) {
       vals.push(this.textContent);
     });
@@ -160,7 +161,6 @@ var buildJSONFromBoxes = function() {
 var buildJSONFromStrings = function(strings) {
   var json = new Array();
   var isNextLineTitle = true;
-  var lineNum = 1;   // Running count of # of lines including category titles
   var currKey = null;
   strings.forEach(function(d) {
     if (d.length > 0) {
@@ -173,7 +173,6 @@ var buildJSONFromStrings = function(strings) {
         json[currKey] = new Array();
         isNextLineTitle = !isNextLineTitle;
       }
-      lineNum++;
     } else {
       isNextLineTitle = true;
     }
@@ -182,19 +181,12 @@ var buildJSONFromStrings = function(strings) {
 };
 
 
-// Returns the number of elements created, i.e., the number of lines of text.
-// Expects that each category title (i.e, "code": header or SSM node type) is
-// immediately preceded by a blank line (excepting the first, which is of course
-// immediately preceded by nothing).
-var createTextListElementsFromJSON = function(json) {
-  var dataIndex = 0; // For every text item including category titles
-  var lineNum = 1;   // Running count of # of lines including category titles
-  var ix = 1;        // Numbers for text items in list excluding category titles
-  var isNextLineTitle = true;
-  var keys = Object.keys(json);
+var buildListArray = function(json) {
   var list = Array(); // objects representing text items to be inserted into DOM
+  var keys = Object.keys(json);
+  var ix = 1;        // Numbers for text items in list excluding category titles
   for (var i = 0; i < keys.length; i++) {
-    // First push object representing code:
+    // First push object representing "code":
     list.push({ "id": json[keys[i]].id,
                 "text": keys[i],
                 "innerHTML": keys[i],
@@ -211,6 +203,19 @@ var createTextListElementsFromJSON = function(json) {
     }
     //list.push(null); // blank line precedes all codes but the first
   }
+  return list;
+};
+
+
+// Returns the number of elements created, i.e., the number of lines of text.
+// Expects that each category title (i.e, "code": header or SSM node type) is
+// immediately preceded by a blank line (excepting the first, which is of course
+// immediately preceded by nothing).
+var createTextListElementsFromJSON = function(json) {
+  var dataIndex = 0; // For every text item including category titles
+  var lineNum = 1;   // Running count of # of lines including category titles
+  var ix = 1;        // Numbers for text items in list excluding category titles
+  var list = buildListArray(json);
   d3.select("svg").append("g")
     .attr("id", "textListG");
   d3.select("#textListG").selectAll(".nodeText")
@@ -307,6 +312,8 @@ document.ondrop = function(e) {
       }
       d3.selectAll(".nodeText").remove();
       var n = createTextListElementsFromJSON(jsonListObj);
+// 2do: Make sure viewbox is big enough to hold all boxes, both newly created 
+// and loaded from file:
       d3.select("svg")
         .attr("viewBox", function() {
           return "0, 0, " + (window.innerWidth * 2) + ", " + (n * textHeight);
