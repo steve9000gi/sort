@@ -109,16 +109,22 @@ var buildJSONFromList = function() {
   var dataIndex = 0; // For every text item including category titles
   var currKey = null;
   d3.selectAll(".nodeText").each(function(d) {
-    if (d && d.text.length > 0) {
-      if (!d.isCode) { // add (object) element to (array) value for current key
-        if (currKey) {
-          json[currKey]["textItems"].push(d);
-        }
-      } else { // new key
+    if (d && d.text && d.text.length > 0) {
+      if (d.isCode) { // then we have a new key
         currKey = d.text;
         json[currKey] = {};
         json[currKey]["textItems"] =  new Array();
         json[currKey]["id"] = this.id;
+      } else { // add (object) element to (array) value for current key
+        if (currKey) {
+          if (!d.innerHTML) {
+            d.innerHTML = this.innerHTML;
+          }
+          if (!d.id) {
+            d.id = this.id;
+          }
+          json[currKey]["textItems"].push(d);
+        }
       }
     }
   });
@@ -161,7 +167,7 @@ var buildJSONFromStrings = function(strings) {
 
 
 // Returns the number of elements created, i.e., the number of lines of text.
-// Expects that each category title (i.e, "coder": header or SSM node type) is
+// Expects that each category title (i.e, "code": header or SSM node type) is
 // immediately preceded by a blank line (excepting the first, which is of course
 // immediately preceded by nothing).
 var createTextListElementsFromJSON = function(json) {
@@ -181,6 +187,10 @@ var createTextListElementsFromJSON = function(json) {
     var nTextItems = json[keys[i]].textItems.length;
     // Then for each code push object for each associated text item:
     for (var j = 0; j < nTextItems; j++) {
+      if (!json[keys[i]].textItems[j].innerHTML) {
+        json[keys[i]].textItems[j].innerHTML = ix++ + ". "
+          + json[keys[i]].textItems[j].text;
+      }
       list.push(json[keys[i]].textItems[j]);
     }
     //list.push(null); // blank line precedes all codes but the first
@@ -211,7 +221,7 @@ var createTextListElementsFromJSON = function(json) {
         if (d && d.innerHTML) {
           return d.innerHTML;
         } else {
-          return "";
+          return ix++ + ". " + d.text; // Number lines that aren't titles
         }
         /*
         if ((d.length > 0) && (!isNextLineTitle)) {
