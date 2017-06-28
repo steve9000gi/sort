@@ -136,21 +136,27 @@ var buildJSONFromList = function() {
 // objects that belong to each box, plus the transform that determines where
 // each box is located in the browser window.
 var buildJSONFromBoxes = function() {
-  var json = {};
+  var json = Array();
   d3.selectAll(".boxG").each(function(d) {
     var box = d3.select(this);
     var boxTitle = box.select(".boxTitle").nodes()[0].textContent;
-    json[boxTitle] = {};
+    var boxObj = {};
+    //json[boxTitle] = {};
+    boxObj["title"] = boxTitle;
     var xform = box.nodes()[0].getAttribute("transform");
-    json[boxTitle]["xform"] = xform;
-    json[boxTitle]["textItems"] =  new Array();
+    //json[boxTitle]["xform"] = xform;
+    //json[boxTitle]["textItems"] =  new Array();
+    boxObj["xform"] = xform;
+    boxObj["textItems"] =  new Array();
     box.selectAll(".boxText").each(function(d) {
       var textItem = {};
       textItem["text"] = d.text;
       textItem["id"] = this.id;
       textItem["numberedText"] = d.numberedText;
-      json[boxTitle]["textItems"].push(textItem);
+      //json[boxTitle]["textItems"].push(textItem);
+      boxObj["textItems"].push(textItem);
     });
+    json.push(boxObj);
   });
   return json;
 };
@@ -255,6 +261,18 @@ var createTextListElementsFromJSON = function(json) {
   return lineNum;
 };
 
+var createBoxesFromJSON = function(json) {
+  var maxBoxY = 0;
+  d3.select("svg").selectAll(".boxG")  
+    .data(json)
+    .enter()
+    .append("g")
+      .classed("boxG", true)
+      .attr("transform", function(d) {
+        return d.xform;
+      });
+  return maxBoxY;
+}
 
 // Assumes that the value in each key/value pair is a flat array. Results from
 // attempting to concatenate two json objects with different keys are 
@@ -307,16 +325,19 @@ document.ondrop = function(e) {
       text = e.target.result;
       var json = isJson(text);
       var jsonListObj = null;
+      var jsonBoxesObj = null;
       if (json) {
         console.log("dropped file is JSON.");
         jsonListObj = json.unsorted;
+        jsonBoxesObj = json.sorted;
       } else {
         console.error("dropped file is not JSON.");
         var split = text.split("\n"); 
         var jsonListObj = buildJSONFromStrings(split);
       }
-      d3.selectAll(".nodeText").remove();
+      d3.select("svg").selectAll("*").remove();
       var n = createTextListElementsFromJSON(jsonListObj);
+      var maxBoxY = createBoxesFromJSON(jsonBoxesObj);
 // 2do: Make sure viewbox is big enough to hold all boxes, both newly created 
 // and loaded from file:
       d3.select("svg")
