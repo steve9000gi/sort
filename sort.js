@@ -108,12 +108,16 @@ var buildJSONFromList = function() {
   var json = {};
   var currKey = null;
   d3.selectAll(".nodeText").each(function(d) {
+    var dataIndex = this.getAttribute("data-index");
     if (d && d.text && d.text.length > 0) {
       if (d.isCode) { // then we have a new key
         currKey = d.text;
         json[currKey] = {};
         json[currKey]["textItems"] =  new Array();
         json[currKey]["id"] = this.id;
+        if (dataIndex) {
+          json[currKey]["dataIndex"] = dataIndex;
+        }
       } else { // add (object) element to (array) value for current key
         if (currKey) {
           if (!d.numberedText) {
@@ -121,6 +125,9 @@ var buildJSONFromList = function() {
           }
           if (!d.id) {
             d.id = this.id;
+          }
+          if (!d.dataIndex && dataIndex) {
+            d.dataIndex = dataIndex;
           }
           json[currKey]["textItems"].push(d);
         }
@@ -141,8 +148,9 @@ var buildJSONFromList = function() {
 // Each element of the "textItems" array is an object comprised of these key-
 // value pairs:
 // 1) "id": <string>,
-// 2) "numberedText": <string>, and
-// 3) "text": <string>.
+// 2) "numberedText": <string>,
+// 3) "text": <string>, and
+// 4) "dataIndex": <string>.
 var buildJSONFromBoxes = function() {
   var json = Array();
   d3.selectAll(".boxG").each(function(d) {
@@ -266,6 +274,7 @@ var createTextListElementsFromJSON = function(json) {
   return lineNum;
 };
 
+
 var createBoxesFromJSON = function(boxObjs) {
   var nBoxObjs = boxObjs ? boxObjs.length : 0; 
   var maxBoxY = 0;
@@ -280,6 +289,7 @@ var createBoxesFromJSON = function(boxObjs) {
   }
   return maxBoxY;
 }
+
 
 // Assumes that the value in each key/value pair is a flat array. Results from
 // attempting to concatenate two json objects with different keys are 
@@ -360,7 +370,6 @@ document.ondrop = function(e) {
 
 // Adjust box size to hold its contents.
 var resizeBox = function(boxG) {
-//  var g = d3.select(boxG);
   var txts = boxG.selectAll(".boxText");
   var nItems = txts.nodes() ? txts.nodes().length : 0;
   var width = nItems ? 0 : boxDefaultW;
