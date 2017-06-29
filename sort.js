@@ -158,6 +158,7 @@ var buildJSONFromBoxes = function() {
       textItem["text"] = d.text;
       textItem["id"] = this.id;
       textItem["numberedText"] = d.numberedText;
+      textItem["dataIndex"] = this.getAttribute("data-index")
       boxObj["textItems"].push(textItem);
     });
     json.push(boxObj);
@@ -265,19 +266,18 @@ var createTextListElementsFromJSON = function(json) {
   return lineNum;
 };
 
-var createBoxesFromJSON = function(json) {
-  if (!json) {
-    return 0;
-  }
+var createBoxesFromJSON = function(boxObjs) {
+  var nBoxObjs = boxObjs ? boxObjs.length : 0; 
   var maxBoxY = 0;
-  d3.select("svg").selectAll(".boxG")  
-    .data(json)
-    .enter()
-    .append("g")
-      .classed("boxG", true)
-      .attr("transform", function(d) {
-        return d.xform;
-      });
+  for (var i = 0; i < nBoxObjs; i++) {
+    console.log(i + ". title: " + boxObjs[i].title + "; xform: "
+      + boxObjs[i].xform);
+    var boxG = newBox({"title": boxObjs[i].title, "xform": boxObjs[i].xform});
+    var nTextItems = boxObjs[i].textItems.length;  
+    for (var j = 0; j < nTextItems; j++) {
+      addTextToBox(boxG, boxObjs[i].textItems[j]);
+    }
+  }
   return maxBoxY;
 }
 
@@ -360,8 +360,8 @@ document.ondrop = function(e) {
 
 // Adjust box size to hold its contents.
 var resizeBox = function(boxG) {
-  var g = d3.select(boxG);
-  var txts = g.selectAll(".boxText");
+//  var g = d3.select(boxG);
+  var txts = boxG.selectAll(".boxText");
   var nItems = txts.nodes() ? txts.nodes().length : 0;
   var width = nItems ? 0 : boxDefaultW;
   var height = nItems ? (textHeight * nItems) : boxDefaultH;
@@ -371,7 +371,7 @@ var resizeBox = function(boxG) {
     var bbox = currentItem.getBBox();
     width = Math.max(bbox.width, width);
   }
-  g.select("rect")
+  boxG.select("rect")
    .attr("width", width + padding)
    .attr("height", height + padding);
 };
@@ -423,11 +423,30 @@ var dropTextIntoBox = function(d) {
     d3.selectAll(".boxText").call(dragText);
     d3.select(textDragging).remove();
     textDragging = null; 
-    resizeBox(inBox);
+    resizeBox(d3.select(inBox));
     cleanUpList();
     inBox = null;
   }
 }; 
+
+// Add text to box when opening a file with sorted items in it.
+var addTextToBox = function(box, d) {
+  var num = d.numberedText.split(".")[0];
+  box.append("text")
+    .classed("boxText", true)
+    .attr("id", d.id)
+    .text(d.text)
+    .datum(d)
+    .style("fill", "#000000")
+    .attr("data-index", d.dataIndex)
+    .attr("data-itemNum", num) // Restore number for de-box/re-list
+    .attr("dx", 3)
+    .attr("dy", function(d) {
+      return (this.parentNode.childElementCount - 2) * textHeight;
+    });
+  d3.selectAll(".boxText").call(dragText);
+  resizeBox(box);
+};
 
 
 // Select all text in element: see http://stackoverflow.com/questions/6139107/
@@ -515,15 +534,28 @@ var removeTextItemFromBox = function(box) {
       .on("mouseleave", textMouseleave);
   d3.selectAll(".nodeText").call(dragText);
   d3.select(selectedBoxText).remove();
-  resizeBox(box);
+  resizeBox(d3.select(box));
   cleanUpList();
 };
 
 
 var newBox = function(d) {
+  var xform = null;
+  var title = "Title";
+  if (d) {
+    if (d.title && (d.title.length > 0)) {
+      title = d.title;
+    }
+    if (d.xform) {
+      xform = d.xform;
+    }
+  } else {
+    xform = "translate(" + (width / 4) + "," + (height / 4) + ")";
+  } 
+
   var newBoxG = d3.select("svg").append("g")
     .classed("boxG", true)
-    .attr("transform", "translate(" + (width / 4) + "," + (height / 4) + ")")
+    .attr("transform", xform)
     .on("mouseover", function(d) {
       if (textDragging) {
         inBox = this;
@@ -548,10 +580,12 @@ var newBox = function(d) {
     .style("fill", "#eeeeff");
   newBoxG.append("text")
     .attr("contentEditable", true)
-    .text("Title")
+    .text(title)
         .classed("boxTitle", true)
     .on("click", editBoxTitle);
   d3.selectAll(".boxG").call(dragBox);
+
+  return newBoxG;
 };
 
 
