@@ -131,21 +131,26 @@ var buildJSONFromList = function() {
 };
 
 
-// Create a JSON object, comprised of a sequence of key-value pairs, from the
-// current boxes: keys are box titles, and values are arrays of text item
-// objects that belong to each box, plus the transform that determines where
-// each box is located in the browser window.
+// Create a JSON object, comprised of an array of key-value pairs, from the
+// current boxes. Each element of this top-level array is an object with three
+// component elements, each a key-value pair:
+// 1) "title": <string>,
+// 2) "xform": <string>, and
+// 3) "textItems": <array>.
+//
+// Each element of the "textItems" array is an object comprised of these key-
+// value pairs:
+// 1) "id": <string>,
+// 2) "numberedText": <string>, and
+// 3) "text": <string>.
 var buildJSONFromBoxes = function() {
   var json = Array();
   d3.selectAll(".boxG").each(function(d) {
     var box = d3.select(this);
     var boxTitle = box.select(".boxTitle").nodes()[0].textContent;
     var boxObj = {};
-    //json[boxTitle] = {};
     boxObj["title"] = boxTitle;
     var xform = box.nodes()[0].getAttribute("transform");
-    //json[boxTitle]["xform"] = xform;
-    //json[boxTitle]["textItems"] =  new Array();
     boxObj["xform"] = xform;
     boxObj["textItems"] =  new Array();
     box.selectAll(".boxText").each(function(d) {
@@ -153,7 +158,6 @@ var buildJSONFromBoxes = function() {
       textItem["text"] = d.text;
       textItem["id"] = this.id;
       textItem["numberedText"] = d.numberedText;
-      //json[boxTitle]["textItems"].push(textItem);
       boxObj["textItems"].push(textItem);
     });
     json.push(boxObj);
@@ -262,6 +266,9 @@ var createTextListElementsFromJSON = function(json) {
 };
 
 var createBoxesFromJSON = function(json) {
+  if (!json) {
+    return 0;
+  }
   var maxBoxY = 0;
   d3.select("svg").selectAll(".boxG")  
     .data(json)
