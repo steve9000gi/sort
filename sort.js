@@ -4,6 +4,9 @@
 // Create, title and retitle boxes. Drag the boxes around as desired. Drag text
 // items from the list on the left into various boxes. Deleting text items from
 // boxes reinserts them into the list. Save the box titles and contents as JSON.
+//
+// JSON output files may be reloaded by drag and drop to continue work on a 
+// previously partally sorted file.
 
 "use strict";
 
@@ -41,15 +44,15 @@ function getTransformation(transform) {
   // be appended to the DOM and will be discarded once this function 
   // returns.
   var g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-  
+
   // Set the transform attribute to the provided string value.
   g.setAttributeNS(null, "transform", transform);
-  
+
   // consolidate the SVGTransformList containing all transformations
   // to a single SVGTransform of type SVG_TRANSFORM_MATRIX and get
   // its SVGMatrix. 
   var matrix = g.transform.baseVal.consolidate().matrix;
-  
+
   // Following calculations are taken and adapted from the private function
   // transform/decompose.js of D3's module d3-interpolate.
   var {a, b, c, d, e, f} = matrix; // ES6, if this doesn't work, use as follows:
@@ -69,6 +72,26 @@ function getTransformation(transform) {
     scaleY: scaleY
   };
 }
+
+
+// https://stackoverflow.com/questions/38224875/replacing-d3-transform-in-d3-v4
+function getTranslation(transform) {
+  // Create a dummy g for calculation purposes only. This will never
+  // be appended to the DOM and will be discarded once this function
+  // returns.
+  var g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+
+  // Set the transform attribute to the provided string value.
+  g.setAttributeNS(null, "transform", transform);
+
+  // consolidate the SVGTransformList containing all transformations
+  // to a single SVGTransform of type SVG_TRANSFORM_MATRIX and get
+  // its SVGMatrix. 
+  var matrix = g.transform.baseVal.consolidate().matrix;
+ 
+  // As per definition values e and f are the ones for the translation.
+  return [matrix.e, matrix.f];
+};
 
 
 // See http://jsfiddle.net/Y8y7V/1/ for avoiding object jump to cursor.
@@ -277,14 +300,18 @@ var createTextListElementsFromJSON = function(json) {
 
 var createBoxesFromJSON = function(boxObjs) {
   var nBoxObjs = boxObjs ? boxObjs.length : 0; 
-  var maxBoxY = 0;
+  var maxBoxY = 0; // 2do: make this some reasonable min, even when [near] empty
+  var thisMaxBoxY = 0;
   for (var i = 0; i < nBoxObjs; i++) {
     console.log(i + ". title: " + boxObjs[i].title + "; xform: "
       + boxObjs[i].xform);
     var boxG = newBox({"title": boxObjs[i].title, "xform": boxObjs[i].xform});
     var nTextItems = boxObjs[i].textItems.length;  
     for (var j = 0; j < nTextItems; j++) {
-      addTextToBox(boxG, boxObjs[i].textItems[j]);
+      thisMaxBoxY = addTextToBox(boxG, boxObjs[i].textItems[j]);
+      if (thisMaxBoxY > maxBoxY) {
+        maxBoxY = thisMaxBoxY;
+      }
     }
   }
   return maxBoxY;
@@ -357,18 +384,20 @@ document.ondrop = function(e) {
       var maxBoxY = createBoxesFromJSON(jsonBoxesObj);
 // 2do: Make sure viewbox is big enough to hold all boxes, both newly created 
 // and loaded from file:
+      var viewBoxHeight = Math.max(maxBoxY, (n * textHeight));
       d3.select("svg")
         .attr("viewBox", function() {
-          return "0, 0, " + (window.innerWidth * 2) + ", " + (n * textHeight);
+          return "0, 0, " + (window.innerWidth * 2) + ", " + viewBoxHeight;
         })
-        .attr("height", n * textHeight);
+        .attr("height", viewBoxHeight);
       d3.selectAll(".nodeText").call(dragText);
     };
     reader.readAsText(e.dataTransfer.files[0]);
 }
 
 
-// Adjust box size to hold its contents.
+// Adjust box size to hold its contents. Returns max y-value for this box from
+// the top of the window.
 var resizeBox = function(boxG) {
   var txts = boxG.selectAll(".boxText");
   var nItems = txts.nodes() ? txts.nodes().length : 0;
@@ -380,9 +409,13 @@ var resizeBox = function(boxG) {
     var bbox = currentItem.getBBox();
     width = Math.max(bbox.width, width);
   }
+  var boxHeight = height + padding;
   boxG.select("rect")
-   .attr("width", width + padding)
-   .attr("height", height + padding);
+    .attr("width", width + padding)
+    .attr("height", boxHeight);
+  var transform = getTranslation(boxG.nodes()[0].getAttribute("transform"));
+  var y = transform[1];
+  return y + boxHeight;
 };
 
 
@@ -414,6 +447,10 @@ var getFollowingListElementId = function(elt) {
 
 // If the user is dragging a text element, drop a copy into the box and remove
 // the original text element from the list.
+//
+// Returns max y-value for this box from
+// the top of the window.
+
 var dropTextIntoBox = function(d) {
   if (textDragging) {
     var num = d.numberedText.split(".")[0];
@@ -438,7 +475,8 @@ var dropTextIntoBox = function(d) {
   }
 }; 
 
-// Add text to box when opening a file with sorted items in it.
+// Add text to box when opening a file with sorted items in it. Returns max y
+// value in window for this box.
 var addTextToBox = function(box, d) {
   var num = d.numberedText.split(".")[0];
   box.append("text")
@@ -454,7 +492,7 @@ var addTextToBox = function(box, d) {
       return (this.parentNode.childElementCount - 2) * textHeight;
     });
   d3.selectAll(".boxText").call(dragText);
-  resizeBox(box);
+  return resizeBox(box);
 };
 
 
