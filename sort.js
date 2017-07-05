@@ -10,9 +10,6 @@
 
 "use strict";
 
-var nextId = 0; // Global id accessed to ensure no duplicate ids in DOM.
-
-
 // See http://jsfiddle.net/Y8y7V/1/ for avoiding object jump to cursor.
 var dragText = d3.drag()
   .subject(function(d, i) {
@@ -235,6 +232,7 @@ var buildListArray = function(json) {
   for (var i = 0; i < keys.length; i++) {
     // First push object representing "code":
     list.push({ "id": json[keys[i]].id,
+                "dataIndex": json[keys[i]].dataIndex,
                 "text": keys[i],
                 "numberedText": keys[i],
                 "isCode": true
@@ -278,7 +276,11 @@ var createTextListElementsFromJSON = function(json) {
         }
       })
       .attr("data-index", function(d) { // List re-insertion text item location
-        return dataIndex++;
+	if (d.dataIndex) {
+	  return d.dataIndex;
+	} else {
+          return dataIndex++;
+	}
       })
       .attr("x", padding)
       .attr("y", function(d) {
@@ -436,12 +438,14 @@ var cleanUpList = function() {
 // Return the id of the text element that should be next after arg "elt".
 var getFollowingListElementId = function(elt) {
   var textArray = d3.select("#textListG").nodes()[0].childNodes;
+  var lastIx = textArray.length - 1;
   var index = parseInt(elt.getAttribute("data-index"));
   var i = 0;
-  while (textArray[i].getAttribute("data-index") < index) {
+  while ((i < lastIx)
+      && parseInt(textArray[i].getAttribute("data-index")) < index) {
     i++;
   }
-  return textArray[i].getAttribute("id");
+  return (i == lastIx) ? null : textArray[i].getAttribute("id");
 };
 
 
@@ -566,19 +570,25 @@ var getSelectedBoxText = function(box) {
 var removeTextItemFromBox = function(box) {
   var selectedBoxText = getSelectedBoxText(box);
   if (!selectedBoxText) return;
-  var followingElementId = getFollowingListElementId(selectedBoxText);
-  d3.select("#textListG").insert("text", "#" + followingElementId)
-      .classed("nodeText", true)
-      .attr("id", selectedBoxText.getAttribute("id"))
-      .attr("data-index", selectedBoxText.getAttribute("data-index"))
-      .datum(d3.select(selectedBoxText).datum())
-      .style("fill", "#000000")
-      .text(function(d) {
-        var num = selectedBoxText.getAttribute("data-itemNum");
-        return num + ". " + selectedBoxText.textContent; 
-      })
-      .on("mouseover", textMouseover)
-      .on("mouseleave", textMouseleave);
+  var followingEltId = getFollowingListElementId(selectedBoxText);
+  var restoredText = null;
+  if (followingEltId) {
+    restoredText = d3.select("#textListG").insert("text", "#" + followingEltId);
+  } else {
+    restoredText = d3.select("#textListG").append("text");
+  }
+  restoredText
+    .classed("nodeText", true)
+    .attr("id", selectedBoxText.getAttribute("id"))
+    .attr("data-index", selectedBoxText.getAttribute("data-index"))
+    .datum(d3.select(selectedBoxText).datum())
+    .style("fill", "#000000")
+    .text(function(d) {
+      var num = selectedBoxText.getAttribute("data-itemNum");
+      return num + ". " + selectedBoxText.textContent; 
+    })
+    .on("mouseover", textMouseover)
+    .on("mouseleave", textMouseleave);
   d3.selectAll(".nodeText").call(dragText);
   d3.select(selectedBoxText).remove();
   resizeBox(d3.select(box));
@@ -597,7 +607,14 @@ var newBox = function(d) {
       xform = d.xform;
     }
   } else {
-    xform = "translate(" + (width / 4) + "," + (height / 4) + ")";
+    if (boxXlateX) {
+      boxXlateX += 4;
+      boxXlateY += 4;
+    } else {
+      boxXlateX += (width / 6);
+      boxXlateY += (height / 6);
+    }
+    xform = "translate(" + boxXlateX + "," + boxXlateY + ")";
   } 
 
   var newBoxG = d3.select("svg").append("g")
@@ -675,10 +692,12 @@ var boxDefaultW = 200;
 var boxDefaultH = 50;
 var docElt = document.documentElement;
 var bodyElt = document.getElementsByTagName("body")[0];
-
 var width = window.innerWidth * 2 || docElt.clientWidth * 2
     || bodyElt.clientWidth * 2; // Double width means more room for boxes.
 var height =  window.innerHeight|| docElt.clientHeight|| bodyElt.clientHeight;
+var nextId = 0; // Global id accessed to ensure no duplicate ids in DOM.
+var boxXlateX = null;
+var boxXlateY = null;
 
 var topDiv = d3.select("#topDiv")
   .attr("width", width)
