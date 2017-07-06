@@ -571,12 +571,9 @@ var removeTextItemFromBox = function(box) {
   var selectedBoxText = getSelectedBoxText(box);
   if (!selectedBoxText) return;
   var followingEltId = getFollowingListElementId(selectedBoxText);
-  var restoredText = null;
-  if (followingEltId) {
-    restoredText = d3.select("#textListG").insert("text", "#" + followingEltId);
-  } else {
-    restoredText = d3.select("#textListG").append("text");
-  }
+  var restoredText = followingEltId
+    ? d3.select("#textListG").insert("text", "#" + followingEltId) 
+    : d3.select("#textListG").append("text");
   restoredText
     .classed("nodeText", true)
     .attr("id", selectedBoxText.getAttribute("id"))
