@@ -438,14 +438,14 @@ var cleanUpList = function() {
 // Return the id of the text element that should be next after arg "elt".
 var getFollowingListElementId = function(elt) {
   var textArray = d3.select("#textListG").nodes()[0].childNodes;
-  var lastIx = textArray.length - 1;
+  var arrayLength = textArray.length;
   var index = parseInt(elt.getAttribute("data-index"));
   var i = 0;
-  while ((i < lastIx)
+  while ((i < arrayLength)
       && parseInt(textArray[i].getAttribute("data-index")) < index) {
     i++;
   }
-  return (i == lastIx) ? null : textArray[i].getAttribute("id");
+  return (i == arrayLength) ? null : textArray[i].getAttribute("id");
 };
 
 
