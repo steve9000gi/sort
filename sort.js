@@ -1,5 +1,5 @@
 // Drag and drop into the browser window a file containing a list of text items,
-// which are displayed by node category, one to a line, in a column on the left.
+// which are displayed by ring title, one to a line, in a column on the left.
 //
 // Create, title and retitle boxes. Drag the boxes around as desired. Drag text
 // items from the list on the left into various boxes. Deleting text items from
@@ -17,7 +17,8 @@ var dragText = d3.drag()
     return {x: t.attr("x"), y: t.attr("y")};
   })
   .on("drag", function(d) {
-    if(this.parentElement.firstElementChild.tagName == "text") {
+    if((!d.isRingTitle) && // false for ring titles
+       (this.parentElement.firstElementChild.tagName == "text")) {
       textDragging = this;
       d3.select("body").style("cursor", "move");
       d3.select(this)
@@ -110,9 +111,12 @@ document.ondragover = function(event) {
 }
 
 
-// Magenta text when hovering over (or dragging when not over a box).
-var textMouseover = function() {
-  d3.select(this) .style("fill", "#aa00aa"); 
+// Magenta text when hovering over non-ring-title text items (or dragging when
+// not over a box).
+var textMouseover = function(d) {
+  if (!d.isRingTitle) {
+    d3.select(this) .style("fill", "#aa00aa"); 
+  }
 };
 
 
@@ -130,7 +134,7 @@ var buildJSONFromList = function() {
   d3.selectAll(".nodeText").each(function(d) {
     var dataIndex = this.getAttribute("data-index");
     if (d && d.text && d.text.length > 0) {
-      if (d.isCode) { // then we have a new key
+      if (d.isRingTitle) { // then we have a new key
         currKey = d.text;
         json[currKey] = {};
         json[currKey]["textItems"] =  new Array();
@@ -140,8 +144,8 @@ var buildJSONFromList = function() {
         }
       } else { // add (object) element to (array) value for current key
         if (currKey) {
-          if (!d.numberedText) {
-            d.numberedText = this.innerHTML;
+          if (!d.displayedText) {
+            d.displayedText = this.innerHTML;
           }
           if (!d.id) {
             d.id = this.id;
@@ -168,7 +172,7 @@ var buildJSONFromList = function() {
 // Each element of the "textItems" array is an object comprised of these key-
 // value pairs:
 // 1) "id": <string>,
-// 2) "numberedText": <string>,
+// 2) "displayedText": <string>,
 // 3) "text": <string>, and
 // 4) "dataIndex": <string>.
 var buildJSONFromBoxes = function() {
@@ -185,7 +189,7 @@ var buildJSONFromBoxes = function() {
       var textItem = {};
       textItem["text"] = d.text;
       textItem["id"] = this.id;
-      textItem["numberedText"] = d.numberedText;
+      textItem["displayedText"] = d.displayedText;
       textItem["dataIndex"] = this.getAttribute("data-index")
       boxObj["textItems"].push(textItem);
     });
@@ -196,7 +200,7 @@ var buildJSONFromBoxes = function() {
 
 
 // Argument "strings" is expected to be an array of strings in which headers, 
-// i.e. category titles or "codes," are preceded by blank lines (other than the
+// i.e. ring titles, are preceded by blank lines (other than the
 // first, which is the first string in the "strings" array. Those headers become
 // keys, the associated value for each is a flat array of the following elements
 // in parameter "strings" up until the next blank line. The string that
@@ -228,38 +232,35 @@ var buildJSONFromStrings = function(strings) {
 var buildListArray = function(json) {
   var list = Array(); // objects representing text items to be inserted into DOM
   var keys = Object.keys(json);
-  var ix = 1;        // Numbers for text items in list excluding category titles
+  var ix = 1;         // numbers for text items in list excluding ring titles
   for (var i = 0; i < keys.length; i++) {
-    // First push object representing "code":
+    // First push object representing ring title:
     list.push({ "id": json[keys[i]].id,
                 "dataIndex": json[keys[i]].dataIndex,
                 "text": keys[i],
-                "numberedText": keys[i],
-                "isCode": true
+                "displayedText": keys[i],
+                "isRingTitle": true
               });
     var nTextItems = json[keys[i]].textItems.length;
-    // Then for each code push object for each associated text item:
+    // Then for each ring title push object for each associated text item:
     for (var j = 0; j < nTextItems; j++) {
-      if (!json[keys[i]].textItems[j].numberedText) {
-        json[keys[i]].textItems[j].numberedText = ix++ + ". "
+      if (!json[keys[i]].textItems[j].displayedText) {
+        json[keys[i]].textItems[j].displayedText = ix++ + ". "
           + json[keys[i]].textItems[j].text;
       }
       list.push(json[keys[i]].textItems[j]);
     }
-    //list.push(null); // blank line precedes all codes but the first
+    //list.push(null); // blank line precedes all ring titles but the first
   }
   return list;
 };
 
 
 // Returns the number of elements created, i.e., the number of lines of text.
-// Expects that each category title (i.e, "code": header or SSM node type) is
-// immediately preceded by a blank line (excepting the first, which is of course
-// immediately preceded by nothing).
 var createTextListElementsFromJSON = function(json) {
-  var dataIndex = 0; // For every text item including category titles
-  var lineNum = 1;   // Running count of # of lines including category titles
-  var ix = 1;        // Numbers for text items in list excluding category titles
+  var dataIndex = 0; // For every text item including ring titles
+  var lineNum = 1;   // Running count of # of lines including ring titles
+  var ix = 1;        // Numbers for text items in list excluding ring titles
   var list = buildListArray(json);
   d3.select("svg").append("g")
     .attr("id", "textListG");
@@ -288,8 +289,8 @@ var createTextListElementsFromJSON = function(json) {
       })
       .style("fill", "#000000")
       .text(function(d) {
-        if (d && d.numberedText) {
-          return d.numberedText;
+        if (d && d.displayedText) {
+          return d.displayedText;
         } else {
           return ix++ + ". " + d.text; // Number lines that aren't titles
         }
@@ -305,8 +306,6 @@ var createBoxesFromJSON = function(boxObjs) {
   var maxBoxY = 0; // 2do: make this some reasonable min, even when [near] empty
   var thisMaxBoxY = 0;
   for (var i = 0; i < nBoxObjs; i++) {
-    console.log(i + ". title: " + boxObjs[i].title + "; xform: "
-      + boxObjs[i].xform);
     var boxG = newBox({"title": boxObjs[i].title, "xform": boxObjs[i].xform});
     var nTextItems = boxObjs[i].textItems.length;  
     for (var j = 0; j < nTextItems; j++) {
@@ -377,25 +376,49 @@ document.ondrop = function(e) {
         jsonListObj = json.unsorted;
         jsonBoxesObj = json.sorted;
       } else {
-        console.error("dropped file is not JSON.");
+        console.log("dropped file is not JSON.");
         var split = text.split("\n"); 
         var jsonListObj = buildJSONFromStrings(split);
       }
       d3.select("svg").selectAll("*").remove();
-      var n = createTextListElementsFromJSON(jsonListObj);
-      var maxBoxY = createBoxesFromJSON(jsonBoxesObj);
-// 2do: Make sure viewbox is big enough to hold all boxes, both newly created 
-// and loaded from file:
-      var viewBoxHeight = Math.max(maxBoxY, (n * textHeight));
-      d3.select("svg")
-        .attr("viewBox", function() {
-          return "0, 0, " + (window.innerWidth * 2) + ", " + viewBoxHeight;
-        })
-        .attr("height", viewBoxHeight);
+      createTextListElementsFromJSON(jsonListObj);
+      createBoxesFromJSON(jsonBoxesObj);
+      resizeViewBox();
       d3.selectAll(".nodeText").call(dragText);
     };
     reader.readAsText(e.dataTransfer.files[0]);
 }
+
+
+var setViewBoxHeight = function(height) {
+  var svg = d3.select("svg");
+// if (parseInt(svg.attr("height")) >= height) return; // Never shorten viewBox?
+  svg.attr("viewBox", function() {
+       return "0, 0, " + (window.innerWidth * 2) + ", " + height;
+     })
+     .attr("height", height);
+};
+
+
+// Make sure SVG viewbox is tall enough to permit access to full text list and
+// all boxes.
+var resizeViewBox = function() {
+  var listHeight  = d3.selectAll(".nodeText").size() * textHeight + 1;
+  var boxGs = d3.selectAll(".boxG");
+  var maxBoxY = 0;
+  boxGs.each(function(d) {
+    var t = d3.select(this);
+    var xform = getTransformation(t.attr("transform"));
+    var boxHeight =
+      parseInt(d3.select(this).select(".box").nodes()[0].getAttribute("height"));
+    var thisBoxMaxY = xform.translateY + boxHeight;
+    if (thisBoxMaxY > maxBoxY) {
+      maxBoxY = thisBoxMaxY;
+    }
+  })
+  setViewBoxHeight(Math.max(maxBoxY, listHeight));
+};
+
 
 
 // Adjust box size to hold its contents. Returns max y-value for this box from
@@ -457,7 +480,7 @@ var getFollowingListElementId = function(elt) {
 
 var dropTextIntoBox = function(d) {
   if (textDragging) {
-    var num = d.numberedText.split(".")[0];
+    var num = d.displayedText.split(".")[0];
     d3.select(inBox).append("text")
       .classed("boxText", true)
       .attr("id", textDragging.getAttribute("id"))
@@ -482,7 +505,7 @@ var dropTextIntoBox = function(d) {
 // Add text to box when opening a file with sorted items in it. Returns max y
 // value in window for this box.
 var addTextToBox = function(box, d) {
-  var num = d.numberedText.split(".")[0];
+  var num = d.displayedText.split(".")[0];
   box.append("text")
     .classed("boxText", true)
     .attr("id", d.id)
@@ -590,6 +613,7 @@ var removeTextItemFromBox = function(box) {
   d3.select(selectedBoxText).remove();
   resizeBox(d3.select(box));
   cleanUpList();
+  resizeViewBox();
 };
 
 
@@ -676,7 +700,7 @@ var saveJSON = function() {
   topJson["unsorted"] = buildJSONFromList();
   var blob = new Blob([window.JSON.stringify(topJson)],
                       {type: "text/plain;charset=utf-8"});
-  window.saveAs(blob, "coded.json");
+  window.saveAs(blob, "sortedItems.json");
 };
 
 
