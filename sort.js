@@ -207,18 +207,20 @@ var buildJSONFromBoxes = function() {
 // immediately follows that blank line is expected to be the key for the next
 // key/value pair.
 var buildJSONFromStrings = function(strings) {
-  var json = new Array();
+  var json = {};
   var isNextLineTitle = true;
   var currKey = null;
   strings.forEach(function(d) {
     if (d.length > 0) {
       if (!isNextLineTitle) {     // new value for current key
         if (currKey) {
-          json[currKey].push(d);
+          var currObj = {"text" : d};
+          json[currKey]["textItems"].push(currObj);
         }
       } else { // new key
         currKey = d;
-        json[currKey] = new Array();
+        json[currKey] = {};
+        json[currKey]["textItems"] =  new Array();
         isNextLineTitle = !isNextLineTitle;
       }
     } else {
