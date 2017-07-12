@@ -1,9 +1,11 @@
+// sort.js:
 // Drag and drop into the browser window a file containing a list of text items,
 // which are displayed by ring title, one to a line, in a column on the left.
 //
 // Create, title and retitle boxes. Drag the boxes around as desired. Drag text
 // items from the list on the left into various boxes. Deleting text items from
-// boxes reinserts them into the list. Save the box titles and contents as JSON.
+// boxes reinserts them into the list. Save the box titles and contents as JSON
+// and as text..
 //
 // JSON output files may be reloaded by drag and drop to continue work on a 
 // previously partally sorted file.
@@ -201,7 +203,7 @@ var buildJSONFromBoxes = function() {
 
 // Argument "strings" is expected to be an array of strings in which headers, 
 // i.e. ring titles, are preceded by blank lines (other than the
-// first, which is the first string in the "strings" array. Those headers become
+// first, which is the first string in the "strings" array.) Those headers become
 // keys, the associated value for each is a flat array of the following elements
 // in parameter "strings" up until the next blank line. The string that
 // immediately follows that blank line is expected to be the key for the next
@@ -405,6 +407,7 @@ var setViewBoxHeight = function(height) {
 // Make sure SVG viewbox is tall enough to permit access to full text list and
 // all boxes.
 var resizeViewBox = function() {
+  var heightPad = 80;
   var listHeight  = d3.selectAll(".nodeText").size() * textHeight + 1;
   var boxGs = d3.selectAll(".boxG");
   var maxBoxY = 0;
@@ -418,7 +421,7 @@ var resizeViewBox = function() {
       maxBoxY = thisBoxMaxY;
     }
   })
-  setViewBoxHeight(Math.max(maxBoxY, listHeight));
+  setViewBoxHeight(Math.max(maxBoxY, listHeight + heightPad));
 };
 
 
@@ -503,6 +506,7 @@ var dropTextIntoBox = function(d) {
     inBox = null;
   }
 }; 
+
 
 // Add text to box when opening a file with sorted items in it. Returns max y
 // value in window for this box.
@@ -634,12 +638,11 @@ var newBox = function(d) {
       boxXlateX += 4;
       boxXlateY += 4;
     } else {
-      boxXlateX += (width / 6);
-      boxXlateY += (height / 6);
+      boxXlateX += (width / 8);
+      boxXlateY += (height / 12);
     }
     xform = "translate(" + boxXlateX + "," + boxXlateY + ")";
   } 
-
   var newBoxG = d3.select("svg").append("g")
     .classed("boxG", true)
     .attr("transform", xform)
@@ -671,7 +674,6 @@ var newBox = function(d) {
         .classed("boxTitle", true)
     .on("click", editBoxTitle);
   d3.selectAll(".boxG").call(dragBox);
-
   return newBoxG;
 };
 
