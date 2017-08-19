@@ -42,3 +42,25 @@ button {
 .boxText {
   pointer-events: none;
 }
+
+.no-close .ui-dialog-titlebar-close {
+    display: none;
+}
+
+.ui-widget-content.ui-dialog
+{
+  position: absolute;
+  top: 50px;
+  border: 5px solid #0;
+  border-style: outset;
+  background: #eeeeee;
+  text-align: center;
+  padding: 5;
+  margin: 5;
+}
+
+.ui-dialog button {
+  padding: 5;
+  margin: 5;
+}
+

@@ -12,6 +12,10 @@
 
 "use strict";
 
+var jsonListObj = null;
+var jsonBoxesObj = null;
+    
+
 // See http://jsfiddle.net/Y8y7V/1/ for avoiding object jump to cursor.
 var dragText = d3.drag()
   .subject(function(d, i) {
@@ -281,11 +285,11 @@ var createTextListElementsFromJSON = function(json) {
         }
       })
       .attr("data-index", function(d) { // List re-insertion text item location
-	if (d.dataIndex) {
-	  return d.dataIndex;
-	} else {
+        if (d.dataIndex) {
+          return d.dataIndex;
+        } else {
           return dataIndex++;
-	}
+        }
       })
       .attr("x", padding)
       .attr("y", function(d) {
@@ -356,25 +360,58 @@ function isJson(str) {
 }
 
 
+var addNewFileToExisting = function() {
+  console.log("addNewFileToExisting; jsonListObj = " + jsonListObj);
+}
+
+
+var loadSingleFile = function() {
+  console.log("loadSingleFile; jsonListObj = " + jsonListObj);
+  d3.select("svg").selectAll("*").remove();
+  createTextListElementsFromJSON(jsonListObj);
+  createBoxesFromJSON(jsonBoxesObj);
+  resizeViewBox();
+  d3.selectAll(".nodeText").call(dragText);
+};
+
+
+var showDropInDialog = function(e) {
+  $("<div id='multi-drop'>Select from the following options:</div>")
+    .appendTo("#topDiv").dialog({
+      title: "You're already working on a list.",
+      resizable: false,
+      height: "auto",
+      modal: true,
+      dialogClass: "no-close",
+      buttons: {
+        "Close it and open this new list instead": function() {
+          $(this).dialog("close");
+          loadSingleFile();
+        },
+        "Add the new list to the one you're working on": function() {
+          $(this).dialog("close");
+          addNewFileToExisting();
+        },
+        Cancel: function() {
+          console.log("Cancel loading new file");
+          $(this).dialog("close");
+        }
+      },
+      close: function (event, ui) {
+        $(this).dialog("destroy").remove();
+      }
+  });
+};
+
+
 // Display the dropped-in text file as a list along the left side of the window.
 // Each line is a text object of class ".nodeText".
 document.ondrop = function(e) {
     e.preventDefault();  // Prevent browser from trying to run/display the file.
-    if ((d3.selectAll(".nodeText").nodes().length > 0) ||
-        (d3.selectAll(".boxG").nodes().length > 0)) {
-      var retVal = confirm("You're already working on a list. Do you want to "
-          + "close it and open this new list?");
-      if (retVal == false) {
-        return;
-      }
-    }
     var reader = new FileReader();
-    var text;
     reader.onload = function(e) {
-      text = e.target.result;
+      var text = e.target.result;
       var json = isJson(text);
-      var jsonListObj = null;
-      var jsonBoxesObj = null;
       if (json) {
         console.log("dropped file is JSON.");
         jsonListObj = json.unsorted;
@@ -382,13 +419,14 @@ document.ondrop = function(e) {
       } else {
         console.log("dropped file is not JSON.");
         var split = text.split("\n"); 
-        var jsonListObj = buildJSONFromStrings(split);
+        jsonListObj = buildJSONFromStrings(split);
       }
-      d3.select("svg").selectAll("*").remove();
-      createTextListElementsFromJSON(jsonListObj);
-      createBoxesFromJSON(jsonBoxesObj);
-      resizeViewBox();
-      d3.selectAll(".nodeText").call(dragText);
+      if ((d3.selectAll(".nodeText").nodes().length > 0) ||
+	  (d3.selectAll(".boxG").nodes().length > 0)) {
+	showDropInDialog(e);
+      } else { // Virgin territory
+	loadSingleFile();
+      }
     };
     reader.readAsText(e.dataTransfer.files[0]);
 }
