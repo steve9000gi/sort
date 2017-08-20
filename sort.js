@@ -329,8 +329,8 @@ var createBoxesFromJSON = function(boxObjs) {
 
 // Assumes that the value in each key/value pair is a flat array. Results from
 // attempting to concatenate two json objects with different keys are 
-// unpredictable.
-var catJSONListObjs = function(oldJsonListObj, newJsonListObj) {
+// unpredictable. NOTE: obsolete with the new file formats.
+var catJSONs = function(oldJsonListObj, newJsonListObj) {
   var catJsonListObj = Array();
   var newKeys = Object.keys(newJsonListObj);
   for (var i = 0; i < newKeys.length; i++) {
@@ -349,6 +349,23 @@ var catJSONListObjs = function(oldJsonListObj, newJsonListObj) {
 };
 
 
+// Create an array of all the text items currently in the DOM, both those in
+// the list and those in boxes. Sort the array by id/dataIndex. Contruct new
+// text item objects, the first of which has id/dataIndex one larger than the
+// largest in the sorted array. Put those new text item objects into
+// jsonListObj.
+//
+// Note: the text items in boxes have to be included so that in case a boxed
+// text item is returned to the list it goes in the right place and also so that
+// there are no duplicate ids in the DOM.
+var catJSONListObjs = function(oldJsonListObj, newJsonListObj) {
+  var catJsonListObj = Array();
+  var newKeys = Object.keys(newJsonListObj);
+//  return catJsonListObj;
+  return jsonListObj; // Stub return value only: replaces existing with new.
+};
+
+
 // https://stackoverflow.com/questions/9804777/how-to-test-if-a-string-is-json-or-not
 function isJson(str) {
     try {
@@ -360,13 +377,14 @@ function isJson(str) {
 }
 
 
-// simplifying assumptions:
+// Drag and drop a new file when another file has already been loaded and 
+// possibly partially or wholly sorted. Simplifying assumptions:
 // 1) The new file being added to the one already in sort is not sorted at all.
 // That is, no boxes or codes in the new file;
 // 2) You'll only be sorting one ring at a time -- e.g., ROLES, NEEDS, etc. --
 // and the new file is for the same ring as the one that's already in sort;
 // 3) The new list items are simply added at the end of the old ones; and
-// Duplicates are ignored: if there are duplicates, they all go into the list as// many times as they're duplicated.
+// 4) Duplicates are ignored: if there are duplicates, they all go into the list// as many times as they're duplicated.
 var addNewFileToExisting = function() {
   console.log("addNewFileToExisting; jsonListObj = " + jsonListObj);
   if (jsonBoxesObj) {
@@ -386,15 +404,6 @@ var addNewFileToExisting = function() {
     return;
   }
   var existingJsonBoxesObj = buildJSONFromBoxes();
-  // 2do: create fcn to concatenate the two list objects, ordering ids and
-  // data-index values correctly to take into account not only the various
-  // ringName groupings but leaving space for any sorted text items, i.e., 
-  // those in boxes.
-  //
-  // Create an array of all the text items currently in the DOM, both those in
-  // the list and those in boxes. Sort the array by id/dataIndex. Contruct new
-  // text item objects, the first of which has id/dataIndex one larger than the
-  // largest in the sorted array.
   //jsonListObj = catJSONListObjs(existingJsonListObj, jsonListObj);
   //loadSingleFile();
 }
