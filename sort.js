@@ -207,11 +207,11 @@ var buildJSONFromBoxes = function() {
 
 // Argument "strings" is expected to be an array of strings in which headers, 
 // i.e. ring titles, are preceded by blank lines (other than the
-// first, which is the first string in the "strings" array.) Those headers become
-// keys, the associated value for each is a flat array of the following elements
-// in parameter "strings" up until the next blank line. The string that
-// immediately follows that blank line is expected to be the key for the next
-// key/value pair.
+// first, which is the first string in the "strings" array.) Those headers
+// become // keys, the associated value for each is a flat array of the
+// following elements in parameter "strings" up until the next blank line. The
+// string that immediately follows that blank line is expected to be the key for
+//  the next key/value pair.
 var buildJSONFromStrings = function(strings) {
   var json = {};
   var isNextLineTitle = true;
@@ -330,7 +330,7 @@ var createBoxesFromJSON = function(boxObjs) {
 // Assumes that the value in each key/value pair is a flat array. Results from
 // attempting to concatenate two json objects with different keys are 
 // unpredictable.
-var catJSONs = function(oldJsonListObj, newJsonListObj) {
+var catJSONListObjs = function(oldJsonListObj, newJsonListObj) {
   var catJsonListObj = Array();
   var newKeys = Object.keys(newJsonListObj);
   for (var i = 0; i < newKeys.length; i++) {
@@ -360,8 +360,43 @@ function isJson(str) {
 }
 
 
+// simplifying assumptions:
+// 1) The new file being added to the one already in sort is not sorted at all.
+// That is, no boxes or codes in the new file;
+// 2) You'll only be sorting one ring at a time -- e.g., ROLES, NEEDS, etc. --
+// and the new file is for the same ring as the one that's already in sort;
+// 3) The new list items are simply added at the end of the old ones; and
+// Duplicates are ignored: if there are duplicates, they all go into the list as// many times as they're duplicated.
 var addNewFileToExisting = function() {
   console.log("addNewFileToExisting; jsonListObj = " + jsonListObj);
+  if (jsonBoxesObj) {
+    alert("Sorry: can't add partially/wholly sorted second file.");
+    jsonBoxesObj = null;
+    return;
+  }
+  var newKeys = Object.keys(jsonListObj);
+  if (newKeys.length > 1) {
+    alert("Sorry: can't add file with multiple rings.");
+    return;
+  }
+  var existingJsonListObj = buildJSONFromList();
+  var existingKeys = Object.keys(existingJsonListObj);
+  if (existingKeys[0] != newKeys[0]) {
+    alert("Sorry: can't add file with different ring than already loaded");
+    return;
+  }
+  var existingJsonBoxesObj = buildJSONFromBoxes();
+  // 2do: create fcn to concatenate the two list objects, ordering ids and
+  // data-index values correctly to take into account not only the various
+  // ringName groupings but leaving space for any sorted text items, i.e., 
+  // those in boxes.
+  //
+  // Create an array of all the text items currently in the DOM, both those in
+  // the list and those in boxes. Sort the array by id/dataIndex. Contruct new
+  // text item objects, the first of which has id/dataIndex one larger than the
+  // largest in the sorted array.
+  //jsonListObj = catJSONListObjs(existingJsonListObj, jsonListObj);
+  //loadSingleFile();
 }
 
 
