@@ -12,8 +12,9 @@
 
 "use strict";
 
-var jsonListObj = null;
-var jsonBoxesObj = null;
+//var jsonListObj = null;
+//var jsonBoxesObj = null;
+var sortGlobal = {"jsonListObj": null, "jsonBoxesObj": null};
     
 
 // See http://jsfiddle.net/Y8y7V/1/ for avoiding object jump to cursor.
@@ -349,23 +350,6 @@ var catJSONs = function(oldJsonListObj, newJsonListObj) {
 };
 
 
-// Create an array of all the text items currently in the DOM, both those in
-// the list and those in boxes. Sort the array by id/dataIndex. Contruct new
-// text item objects, the first of which has id/dataIndex one larger than the
-// largest in the sorted array. Put those new text item objects into
-// jsonListObj.
-//
-// Note: the text items in boxes have to be included so that in case a boxed
-// text item is returned to the list it goes in the right place and also so that
-// there are no duplicate ids in the DOM.
-var catJSONListObjs = function(oldJsonListObj, newJsonListObj) {
-  var catJsonListObj = Array();
-  var newKeys = Object.keys(newJsonListObj);
-//  return catJsonListObj;
-  return jsonListObj; // Stub return value only: replaces existing with new.
-};
-
-
 // https://stackoverflow.com/questions/9804777/how-to-test-if-a-string-is-json-or-not
 function isJson(str) {
     try {
@@ -377,46 +361,75 @@ function isJson(str) {
 }
 
 
-// Drag and drop a new file when another file has already been loaded and 
-// possibly partially or wholly sorted. Simplifying assumptions:
+var showSorryDialog = function(title) {
+  $("<div></div>").appendTo("#topDiv").dialog({
+      title: "Sorry: " + title,
+      resizable: false,
+      height: "auto",
+      modal: true,
+      dialogClass: "no-close",
+      position: { my: 'top', at: 'top+50' },
+      buttons: {
+        "OK": function() {
+          $(this).dialog("close");
+        }
+      },
+      close: function (event, ui) {
+        $(this).dialog("destroy").remove();
+      }
+  });
+};
+
+
+// Drag and drop a new file into sort when another file has already been loaded
+// and possibly partially or wholly sorted. "Existing" is used here to mean 
+// "already in the DOM." 
+//
+// Simplifying assumptions:
 // 1) The new file being added to the one already in sort is not sorted at all.
-// That is, no boxes or codes in the new file;
-// 2) You'll only be sorting one ring at a time -- e.g., ROLES, NEEDS, etc. --
-// and the new file is for the same ring as the one that's already in sort;
+// That is, there are no boxes (i.e., codes) in the new file;
+// 2) You'll only be sorting one ring at a time -- ROLES, NEEDS, etc. -- and the
+// new file is for the same ring as the one that's already in sort;
 // 3) The new list items are simply added at the end of the old ones; and
-// 4) Duplicates are ignored: if there are duplicates, they all go into the list
-// as many times as they're duplicated.
+// 4) Duplicates are accepted: if there are duplicates, they all go into the
+// list as many times as they're duplicated, each as a distinct text item.
 //
 // Algorithm: 
-// Put the dataIndices for all the existing text items into an array, both those
-// still in the list and those in boxes. Get the largest value in the array.
-// Build new text items from the new file with dataIndex (and related fields,
-// i.e., displayedText and id) starting at existing largest + 1. 
+// 1) Put the dataIndex values for all the existing text items into an array,
+// both those still in the list and those in boxes. Get the largest dataIndex
+// value in the array.
+// 2) Build new text items from the new file with dataIndex starting at existing
+// largest + 1. Add the other fields, those  whose values incorporate the
+// dataIndex value -- i.e., displayedText and id -- with values set accordingly.
+// 3) Add the new text items to the list of existing text items.
+// 4) Reload using the new augmented list, plus the boxes as they already exist
+// in the DOM (since by simplifying assumption #1 above we're not adding new
+// boxes or boxed text items).
 var addNewFileToExisting = function() {
-  console.log("addNewFileToExisting; jsonListObj = " + jsonListObj);
-  if (jsonBoxesObj) {
-    alert("Sorry: can't add partially/wholly sorted second file.");
-    jsonBoxesObj = null;
+  if (sortGlobal.jsonBoxesObj) {
+    showSorryDialog("can't add a partially/wholly sorted second file.");
+    sortGlobal.jsonBoxesObj = null;
     return;
   }
-  var newKeys = Object.keys(jsonListObj);
+  var newKeys = Object.keys(sortGlobal.jsonListObj);
   if (newKeys.length > 1) {
-    alert("Sorry: can't add file with multiple rings.");
+    showSorryDialog("can't add a file with multiple rings.");
     return;
   }
   var existingJsonListObj = buildJSONFromList();
   var existingKeys = Object.keys(existingJsonListObj);
   var key = existingKeys[0]; // At this point there'd better be only one key.
   if (key != newKeys[0]) {
-    alert("Sorry: can't add file with different ring than already loaded");
+    showSorryDialog(
+      "can't add a file with a different ring than what's already loaded.");
     return;
   }
   var existingJsonBoxesObj = buildJSONFromBoxes();
   var existingListTextItems = existingJsonListObj[key].textItems;
-  var existingdataIndices = [];
+  var existingDataIndices = [];
   var nExistingListTextItems = existingListTextItems.length;
   for (var i = 0; i < nExistingListTextItems; i++) {
-    existingdataIndices.push(parseInt(existingListTextItems[i].dataIndex));
+    existingDataIndices.push(parseInt(existingListTextItems[i].dataIndex));
   }
   var nBoxes = existingJsonBoxesObj.length;
   for (var i = 0; i < nBoxes; i++) {
@@ -424,11 +437,12 @@ var addNewFileToExisting = function() {
     var currTextItems = currBox.textItems;
     var nCurrTextItems = currTextItems.length;
     for (var j = 0; j < nCurrTextItems; j++) {
-      existingdataIndices.push(parseInt(currTextItems[j].dataIndex));
+      existingDataIndices.push(parseInt(currTextItems[j].dataIndex));
     }
   }
-  var maxDataIndex = Math.max.apply(Math, existingdataIndices);
-  var textItems = jsonListObj[key].textItems;
+  var maxDataIndex = Math.max.apply(Math, existingDataIndices);
+  var textItems = sortGlobal.jsonListObj[key].textItems;
+  sortGlobal.jsonListObj = existingJsonListObj;
   var nTextItems = textItems.length;
   for (var i = 0; i < nTextItems; i++) {
     var newTextItem = {};
@@ -437,19 +451,17 @@ var addNewFileToExisting = function() {
     newTextItem["displayedText"] = newDataIndex + ". " + textItems[i].text;
     newTextItem["text"] = textItems[i].text;
     newTextItem["id"] = "id" + newDataIndex;
-    existingJsonListObj[key].textItems.push(newTextItem);
+    sortGlobal.jsonListObj[key].textItems.push(newTextItem);
   }
-  jsonListObj = existingJsonListObj;
-  jsonBoxesObj = existingJsonBoxesObj;
+  sortGlobal.jsonBoxesObj = existingJsonBoxesObj;
   loadSingleFile();
 }
 
 
 var loadSingleFile = function() {
-  console.log("loadSingleFile; jsonListObj = " + jsonListObj);
   d3.select("svg").selectAll("*").remove();
-  createTextListElementsFromJSON(jsonListObj);
-  createBoxesFromJSON(jsonBoxesObj);
+  createTextListElementsFromJSON(sortGlobal.jsonListObj);
+  createBoxesFromJSON(sortGlobal.jsonBoxesObj);
   resizeViewBox();
   d3.selectAll(".nodeText").call(dragText);
 };
@@ -463,17 +475,18 @@ var showDropInDialog = function(e) {
       height: "auto",
       modal: true,
       dialogClass: "no-close",
+      position: { my: 'top', at: 'top+50' },
       buttons: {
-        "Close it and open this new list instead": function() {
-          $(this).dialog("close");
-          loadSingleFile();
-        },
-        "Add the new list to the one you're working on": function() {
+        "Add the new list to what's already open": function() {
           $(this).dialog("close");
           addNewFileToExisting();
         },
-        Cancel: function() {
-          console.log("Cancel loading new file");
+        "Close what's open now and open this new list instead": function() {
+          $(this).dialog("close");
+          loadSingleFile();
+        },
+        "Don't open the new file; just stay with what you've already got.":
+        function() {
           $(this).dialog("close");
         }
       },
@@ -494,12 +507,12 @@ document.ondrop = function(e) {
       var json = isJson(text);
       if (json) {
         console.log("dropped file is JSON.");
-        jsonListObj = json.unsorted;
-        jsonBoxesObj = json.sorted;
+        sortGlobal.jsonListObj = json.unsorted;
+        sortGlobal.jsonBoxesObj = json.sorted;
       } else {
         console.log("dropped file is not JSON.");
         var split = text.split("\n"); 
-        jsonListObj = buildJSONFromStrings(split);
+        sortGlobal.jsonListObj = buildJSONFromStrings(split);
       }
       if ((d3.selectAll(".nodeText").nodes().length > 0) ||
 	  (d3.selectAll(".boxG").nodes().length > 0)) {

@@ -50,17 +50,15 @@ button {
 .ui-widget-content.ui-dialog
 {
   position: absolute;
-  top: 50px;
-  border: 5px solid #0;
-  border-style: outset;
-  background: #eeeeee;
+  border-style: ridge;
+  background: #ddddee;
   text-align: center;
-  padding: 5;
-  margin: 5;
 }
 
-.ui-dialog button {
-  padding: 5;
-  margin: 5;
+.ui-button {
+  margin: 6px !important;
 }
+
+.ui-dialog { z-index: 1000 !important ;}
+.ui-front { z-index: 1000 !important; }
 
