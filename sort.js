@@ -384,7 +384,14 @@ function isJson(str) {
 // 2) You'll only be sorting one ring at a time -- e.g., ROLES, NEEDS, etc. --
 // and the new file is for the same ring as the one that's already in sort;
 // 3) The new list items are simply added at the end of the old ones; and
-// 4) Duplicates are ignored: if there are duplicates, they all go into the list// as many times as they're duplicated.
+// 4) Duplicates are ignored: if there are duplicates, they all go into the list
+// as many times as they're duplicated.
+//
+// Algorithm: 
+// Put the dataIndices for all the existing text items into an array, both those
+// still in the list and those in boxes. Get the largest value in the array.
+// Build new text items from the new file with dataIndex (and related fields,
+// i.e., displayedText and id) starting at existing largest + 1. 
 var addNewFileToExisting = function() {
   console.log("addNewFileToExisting; jsonListObj = " + jsonListObj);
   if (jsonBoxesObj) {
@@ -399,13 +406,42 @@ var addNewFileToExisting = function() {
   }
   var existingJsonListObj = buildJSONFromList();
   var existingKeys = Object.keys(existingJsonListObj);
-  if (existingKeys[0] != newKeys[0]) {
+  var key = existingKeys[0]; // At this point there'd better be only one key.
+  if (key != newKeys[0]) {
     alert("Sorry: can't add file with different ring than already loaded");
     return;
   }
   var existingJsonBoxesObj = buildJSONFromBoxes();
-  //jsonListObj = catJSONListObjs(existingJsonListObj, jsonListObj);
-  //loadSingleFile();
+  var existingListTextItems = existingJsonListObj[key].textItems;
+  var existingdataIndices = [];
+  var nExistingListTextItems = existingListTextItems.length;
+  for (var i = 0; i < nExistingListTextItems; i++) {
+    existingdataIndices.push(parseInt(existingListTextItems[i].dataIndex));
+  }
+  var nBoxes = existingJsonBoxesObj.length;
+  for (var i = 0; i < nBoxes; i++) {
+    var currBox = existingJsonBoxesObj[i];
+    var currTextItems = currBox.textItems;
+    var nCurrTextItems = currTextItems.length;
+    for (var j = 0; j < nCurrTextItems; j++) {
+      existingdataIndices.push(parseInt(currTextItems[j].dataIndex));
+    }
+  }
+  var maxDataIndex = Math.max.apply(Math, existingdataIndices);
+  var textItems = jsonListObj[key].textItems;
+  var nTextItems = textItems.length;
+  for (var i = 0; i < nTextItems; i++) {
+    var newTextItem = {};
+    var newDataIndex = (maxDataIndex + i + 1).toString();
+    newTextItem["dataIndex"] = newDataIndex;
+    newTextItem["displayedText"] = newDataIndex + ". " + textItems[i].text;
+    newTextItem["text"] = textItems[i].text;
+    newTextItem["id"] = "id" + newDataIndex;
+    existingJsonListObj[key].textItems.push(newTextItem);
+  }
+  jsonListObj = existingJsonListObj;
+  jsonBoxesObj = existingJsonBoxesObj;
+  loadSingleFile();
 }
 
 
