@@ -5,17 +5,15 @@
 // Create, title and retitle boxes. Drag the boxes around as desired. Drag text
 // items from the list on the left into various boxes. Deleting text items from
 // boxes reinserts them into the list. Save the box titles and contents as JSON
-// and as text..
+// and as text.
 //
-// JSON output files may be reloaded by drag and drop to continue work on a 
+// JSON output files may be reloaded by drag and drop to continue work on a
 // previously partally sorted file.
 
 "use strict";
 
-//var jsonListObj = null;
-//var jsonBoxesObj = null;
 var sortGlobal = {"jsonListObj": null, "jsonBoxesObj": null};
-    
+
 
 // See http://jsfiddle.net/Y8y7V/1/ for avoiding object jump to cursor.
 var dragText = d3.drag()
@@ -45,29 +43,48 @@ var dragText = d3.drag()
 
 // http://stackoverflow.com/questions/38224875/replacing-d3-transform-in-d3-v4
 function getTransformation(transform) {
-  // Create a dummy g for calculation purposes only. This will never
-  // be appended to the DOM and will be discarded once this function 
-  // returns.
+  // Create a dummy g for calculation purposes only. This will never be appended  // to the DOM and will be discarded once this function returns.
   var g = document.createElementNS("http://www.w3.org/2000/svg", "g");
 
   // Set the transform attribute to the provided string value.
   g.setAttributeNS(null, "transform", transform);
 
-  // consolidate the SVGTransformList containing all transformations
-  // to a single SVGTransform of type SVG_TRANSFORM_MATRIX and get
-  // its SVGMatrix. 
+  // Consolidate the SVGTransformList containing all transformations to a single
+  // SVGTransform of type SVG_TRANSFORM_MATRIX and get its SVGMatrix.
   var matrix = g.transform.baseVal.consolidate().matrix;
 
-  // Following calculations are taken and adapted from the private function
+  // The following calculations are taken and adapted from the private function
   // transform/decompose.js of D3's module d3-interpolate.
-  var {a, b, c, d, e, f} = matrix; // ES6, if this doesn't work, use as follows:
-  // var a=matrix.a, b=matrix.b, c=matrix.c, d=matrix.d, e=matrix.e, f=matrix.f;
+  // var {a, b, c, d, e, f} = matrix; // ES6, if this doesn't work, use this:
+  var a=matrix.a;
+  var b=matrix.b;
+  var c=matrix.c;
+  var d=matrix.d;
+  var e=matrix.e;
+  var f=matrix.f;
   // ES5
-  var scaleX, scaleY, skewX;
-  if (scaleX = Math.sqrt(a * a + b * b)) a /= scaleX, b /= scaleX;
-  if (skewX = a * c + b * d) c -= a * skewX, d -= b * skewX;
-  if (scaleY = Math.sqrt(c * c + d * d)) c /= scaleY, d /= scaleY, skewX /= scaleY;
-  if (a * d < b * c) a = -a, b = -b, skewX = -skewX, scaleX = -scaleX;
+  var scaleX;
+  var scaleY;
+  var skewX;
+  if (scaleX = Math.sqrt(a * a + b * b)) {
+    a /= scaleX;
+    b /= scaleX;
+  }
+  if (skewX = a * c + b * d) {
+    c -= a * skewX;
+    d -= b * skewX;
+  }
+  if (scaleY = Math.sqrt(c * c + d * d)) {
+    c /= scaleY;
+    d /= scaleY;
+    skewX /= scaleY;
+  }
+  if (a * d < b * c) {
+    a = -a;
+    b = -b;
+    skewX = -skewX;
+    scaleX = -scaleX;
+  }
   return {
     translateX: e,
     translateY: f,
@@ -77,26 +94,6 @@ function getTransformation(transform) {
     scaleY: scaleY
   };
 }
-
-
-// https://stackoverflow.com/questions/38224875/replacing-d3-transform-in-d3-v4
-function getTranslation(transform) {
-  // Create a dummy g for calculation purposes only. This will never
-  // be appended to the DOM and will be discarded once this function
-  // returns.
-  var g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-
-  // Set the transform attribute to the provided string value.
-  g.setAttributeNS(null, "transform", transform);
-
-  // consolidate the SVGTransformList containing all transformations
-  // to a single SVGTransform of type SVG_TRANSFORM_MATRIX and get
-  // its SVGMatrix. 
-  var matrix = g.transform.baseVal.consolidate().matrix;
- 
-  // As per definition values e and f are the ones for the translation.
-  return [matrix.e, matrix.f];
-};
 
 
 // See http://jsfiddle.net/Y8y7V/1/ for avoiding object jump to cursor.
@@ -122,7 +119,7 @@ document.ondragover = function(event) {
 // not over a box).
 var textMouseover = function(d) {
   if (!d.isRingTitle) {
-    d3.select(this) .style("fill", "#aa00aa"); 
+    d3.select(this) .style("fill", "#aa00aa");
   }
 };
 
@@ -183,8 +180,12 @@ var buildJSONFromList = function() {
 // 3) "text": <string>, and
 // 4) "dataIndex": <string>.
 var buildJSONFromBoxes = function() {
+  var boxGs = d3.selectAll(".boxG");
+  if (boxGs.nodes().length < 1) {
+    return null;
+  }
   var json = Array();
-  d3.selectAll(".boxG").each(function(d) {
+  boxGs.each(function(d) {
     var box = d3.select(this);
     var boxTitle = box.select(".boxTitle").nodes()[0].textContent;
     var boxObj = {};
@@ -206,13 +207,13 @@ var buildJSONFromBoxes = function() {
 };
 
 
-// Argument "strings" is expected to be an array of strings in which headers, 
-// i.e. ring titles, are preceded by blank lines (other than the
-// first, which is the first string in the "strings" array.) Those headers
-// become // keys, the associated value for each is a flat array of the
-// following elements in parameter "strings" up until the next blank line. The
-// string that immediately follows that blank line is expected to be the key for
-//  the next key/value pair.
+// Argument "strings" is expected to be an array of strings in which headers,
+// i.e. ring titles, are preceded by blank lines (other than the first, which is
+// the first string in the "strings" array.) Those headers become keys, the
+// associated value for each is a flat array of the following elements in
+// parameter "strings" up until the next blank line. The string that immediately
+// follows that blank line is expected to be the key for the next key/value
+// pair.
 var buildJSONFromStrings = function(strings) {
   var json = {};
   var isNextLineTitle = true;
@@ -225,7 +226,7 @@ var buildJSONFromStrings = function(strings) {
           json[currKey]["textItems"].push(currObj);
         }
       } else { // new key
-        currKey = d;
+        currKey = d.replace(/\:$/, ''); // lose any terminating colon
         json[currKey] = {};
         json[currKey]["textItems"] =  new Array();
         isNextLineTitle = !isNextLineTitle;
@@ -259,7 +260,6 @@ var buildListArray = function(json) {
       }
       list.push(json[keys[i]].textItems[j]);
     }
-    //list.push(null); // blank line precedes all ring titles but the first
   }
   return list;
 };
@@ -311,12 +311,12 @@ var createTextListElementsFromJSON = function(json) {
 
 
 var createBoxesFromJSON = function(boxObjs) {
-  var nBoxObjs = boxObjs ? boxObjs.length : 0; 
+  var nBoxObjs = boxObjs ? boxObjs.length : 0;
   var maxBoxY = 0; // 2do: make this some reasonable min, even when [near] empty
   var thisMaxBoxY = 0;
   for (var i = 0; i < nBoxObjs; i++) {
     var boxG = newBox({"title": boxObjs[i].title, "xform": boxObjs[i].xform});
-    var nTextItems = boxObjs[i].textItems.length;  
+    var nTextItems = boxObjs[i].textItems.length;
     for (var j = 0; j < nTextItems; j++) {
       thisMaxBoxY = addTextToBox(boxG, boxObjs[i].textItems[j]);
       if (thisMaxBoxY > maxBoxY) {
@@ -326,28 +326,6 @@ var createBoxesFromJSON = function(boxObjs) {
   }
   return maxBoxY;
 }
-
-
-// Assumes that the value in each key/value pair is a flat array. Results from
-// attempting to concatenate two json objects with different keys are 
-// unpredictable. NOTE: obsolete with the new file formats.
-var catJSONs = function(oldJsonListObj, newJsonListObj) {
-  var catJsonListObj = Array();
-  var newKeys = Object.keys(newJsonListObj);
-  for (var i = 0; i < newKeys.length; i++) {
-    var key = newKeys[i];
-    catJsonListObj[key] = Array();
-    var numOldKeys = oldJsonListObj[key] ? oldJsonListObj[key].length : 0;
-    for (var j = 0; j < numOldKeys; j++) {
-      catJsonListObj[key].push(oldJsonListObj[key][j]);
-    }
-    var numNewKeys = newJsonListObj[key] ? newJsonListObj[key].length : 0;
-    for (var k = 0; k < numNewKeys; k++) {
-      catJsonListObj[key].push(newJsonListObj[key][k]);
-    }
-  }
-  return catJsonListObj;
-};
 
 
 // https://stackoverflow.com/questions/9804777/how-to-test-if-a-string-is-json-or-not
@@ -368,7 +346,7 @@ var showSorryDialog = function(title) {
       height: "auto",
       modal: true,
       dialogClass: "no-close",
-      position: { my: 'top', at: 'top+50' },
+      position: { my: "top", at: "top+50" },
       buttons: {
         "OK": function() {
           $(this).dialog("close");
@@ -382,8 +360,8 @@ var showSorryDialog = function(title) {
 
 
 // Drag and drop a new file into sort when another file has already been loaded
-// and possibly partially or wholly sorted. "Existing" is used here to mean 
-// "already in the DOM." 
+// and possibly partially or wholly sorted. "Existing" is used here to mean
+// "already in the DOM."
 //
 // Simplifying assumptions:
 // 1) The new file being added to the one already in sort is not sorted at all.
@@ -394,7 +372,7 @@ var showSorryDialog = function(title) {
 // 4) Duplicates are accepted: if there are duplicates, they all go into the
 // list as many times as they're duplicated, each as a distinct text item.
 //
-// Algorithm: 
+// Algorithm:
 // 1) Put the dataIndex values for all the existing text items into an array,
 // both those still in the list and those in boxes. Get the largest dataIndex
 // value in the array.
@@ -431,7 +409,7 @@ var addNewFileToExisting = function() {
   for (var i = 0; i < nExistingListTextItems; i++) {
     existingDataIndices.push(parseInt(existingListTextItems[i].dataIndex));
   }
-  var nBoxes = existingJsonBoxesObj.length;
+  var nBoxes = existingJsonBoxesObj ? existingJsonBoxesObj.length : 0;
   for (var i = 0; i < nBoxes; i++) {
     var currBox = existingJsonBoxesObj[i];
     var currTextItems = currBox.textItems;
@@ -458,14 +436,38 @@ var addNewFileToExisting = function() {
 }
 
 
+// Parameter "candidates" is expected to be an array of strings. If any of those
+// strings is not a valid ring name, return false.
+var validRingNames = function(candidates) {
+  var RING_NAMES = ["ROLES",
+                    "RESPONSIBILITIES",
+                    "NEEDS",
+                    "RESOURCES",
+                    "WISHES",
+                    "TEXTS"
+                   ];
+  var nCandidates = candidates.length;
+  for (var i = 0; i < nCandidates; i++) {
+    if (RING_NAMES.indexOf(candidates[i]) == -1) {
+      return false;
+    }
+  }
+  return true;
+};
+
+
 var loadSingleFile = function() {
+  if (!validRingNames(Object.keys(sortGlobal.jsonListObj))) {
+    showSorryDialog("invalid ring name in input.");
+    return;
+  }
   d3.select("svg").selectAll("*").remove();
   createTextListElementsFromJSON(sortGlobal.jsonListObj);
   createBoxesFromJSON(sortGlobal.jsonBoxesObj);
   resizeViewBox();
   d3.selectAll(".nodeText").call(dragText);
 };
-
+ 
 
 var showDropInDialog = function(e) {
   $("<div id='multi-drop'>Select from the following options:</div>")
@@ -475,7 +477,7 @@ var showDropInDialog = function(e) {
       height: "auto",
       modal: true,
       dialogClass: "no-close",
-      position: { my: 'top', at: 'top+50' },
+      position: { my: "top", at: "top+50" },
       buttons: {
         "Add the new list to what's already open": function() {
           $(this).dialog("close");
@@ -511,14 +513,15 @@ document.ondrop = function(e) {
         sortGlobal.jsonBoxesObj = json.sorted;
       } else {
         console.log("dropped file is not JSON.");
-        var split = text.split("\n"); 
+        sortGlobal.jsonBoxesObj = null;
+        var split = text.split("\n");
         sortGlobal.jsonListObj = buildJSONFromStrings(split);
       }
       if ((d3.selectAll(".nodeText").nodes().length > 0) ||
-	  (d3.selectAll(".boxG").nodes().length > 0)) {
-	showDropInDialog(e);
+        (d3.selectAll(".boxG").nodes().length > 0)) {
+        showDropInDialog(e);
       } else { // Virgin territory
-	loadSingleFile();
+        loadSingleFile();
       }
     };
     reader.readAsText(e.dataTransfer.files[0]);
@@ -557,8 +560,7 @@ var resizeViewBox = function() {
 
 
 
-// Adjust box size to hold its contents. Returns max y-value for this box from
-// the top of the window.
+// Adjust box size to hold its contents. Returns max y-value for this box.
 var resizeBox = function(boxG) {
   var txts = boxG.selectAll(".boxText");
   var nItems = txts.nodes() ? txts.nodes().length : 0;
@@ -574,7 +576,7 @@ var resizeBox = function(boxG) {
   boxG.select("rect")
     .attr("width", width + padding)
     .attr("height", boxHeight);
-  var transform = getTranslation(boxG.nodes()[0].getAttribute("transform"));
+  var transform = getTransformation(boxG.nodes()[0].getAttribute("transform"));
   var y = transform[1];
   return y + boxHeight;
 };
@@ -593,7 +595,7 @@ var cleanUpList = function() {
   }
 };
 
-    
+
 // Return the id of the text element that should be next after arg "elt".
 var getFollowingListElementId = function(elt) {
   var textArray = d3.select("#textListG").nodes()[0].childNodes;
@@ -609,11 +611,7 @@ var getFollowingListElementId = function(elt) {
 
 
 // If the user is dragging a text element, drop a copy into the box and remove
-// the original text element from the list.
-//
-// Returns max y-value for this box from
-// the top of the window.
-
+// the original text element from the list. Returns max y-value for this box.
 var dropTextIntoBox = function(d) {
   if (textDragging) {
     var num = d.displayedText.split(".")[0];
@@ -627,16 +625,16 @@ var dropTextIntoBox = function(d) {
       .attr("data-itemNum", num) // Restore number for de-box/re-list
       .attr("dx", 3)
       .attr("dy", function(d) {
-        return (this.parentNode.childElementCount - 2) * textHeight; 
+        return (this.parentNode.childElementCount - 2) * textHeight;
       });
     d3.selectAll(".boxText").call(dragText);
     d3.select(textDragging).remove();
-    textDragging = null; 
+    textDragging = null;
     resizeBox(d3.select(inBox));
     cleanUpList();
     inBox = null;
   }
-}; 
+};
 
 
 // Add text to box when opening a file with sorted items in it. Returns max y
@@ -732,7 +730,7 @@ var removeTextItemFromBox = function(box) {
   if (!selectedBoxText) return;
   var followingEltId = getFollowingListElementId(selectedBoxText);
   var restoredText = followingEltId
-    ? d3.select("#textListG").insert("text", "#" + followingEltId) 
+    ? d3.select("#textListG").insert("text", "#" + followingEltId)
     : d3.select("#textListG").append("text");
   restoredText
     .classed("nodeText", true)
@@ -742,7 +740,7 @@ var removeTextItemFromBox = function(box) {
     .style("fill", "#000000")
     .text(function(d) {
       var num = selectedBoxText.getAttribute("data-itemNum");
-      return num + ". " + selectedBoxText.textContent; 
+      return num + ". " + selectedBoxText.textContent;
     })
     .on("mouseover", textMouseover)
     .on("mouseleave", textMouseleave);
@@ -773,7 +771,7 @@ var newBox = function(d) {
       boxXlateY += (height / 12);
     }
     xform = "translate(" + boxXlateX + "," + boxXlateY + ")";
-  } 
+  }
   var newBoxG = d3.select("svg").append("g")
     .classed("boxG", true)
     .attr("transform", xform)
@@ -789,12 +787,12 @@ var newBox = function(d) {
     .on("click", function(d) {
       if (d3.event.shiftKey && !textDragging) {
         removeTextItemFromBox(this);
-      } 
+      }
     });
   newBoxG.append("rect")
     .classed("box", true)
     .attr("x", 0)
-    .attr("y",0) 
+    .attr("y", 0)
     .attr("width", boxDefaultW)
     .attr("height", boxDefaultH)
     .style("stroke", "#000055")
@@ -819,7 +817,7 @@ var saveText = function() {
     text += box.select(".boxTitle").nodes()[0].textContent + ":\n";;
     box.selectAll(".boxText").each(function(d, i) {
       text += this.textContent + "\n";;
-    }); 
+    });
     text += "\n";
   });
   var blob = new Blob([text], {type: "text/plain;charset=utf-8"});
@@ -890,14 +888,14 @@ d3.select("#headerDiv").append("button")
   .attr("id", "helpBtn")
   .text("Help")
   .on("click", function() {
-    window.open("instructions.html","_blank");
+    window.open("instructions.html", "_blank");
   });
 
 topDiv.append("svg:svg")
   .attr("width", width)
   .attr("height", height)
   .attr({"xmlns": "http://www.w3.org/2000/svg",
-        "xmlns:xmlns:xlink": "http://www.w3.org/1999/xlink", 
+        "xmlns:xmlns:xlink": "http://www.w3.org/1999/xlink",
         version: "1.1"
        });
 
