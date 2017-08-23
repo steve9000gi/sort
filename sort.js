@@ -43,16 +43,14 @@ var dragText = d3.drag()
 
 // http://stackoverflow.com/questions/38224875/replacing-d3-transform-in-d3-v4
 function getTransformation(transform) {
-  // Create a dummy g for calculation purposes only. This will never be appended  // to the DOM and will be discarded once this function returns.
+  // Create a dummy g for calculation purposes only. This will never be appended
+  // to the DOM and will be discarded once this function returns.
   var g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-
   // Set the transform attribute to the provided string value.
   g.setAttributeNS(null, "transform", transform);
-
   // Consolidate the SVGTransformList containing all transformations to a single
   // SVGTransform of type SVG_TRANSFORM_MATRIX and get its SVGMatrix.
   var matrix = g.transform.baseVal.consolidate().matrix;
-
   // The following calculations are taken and adapted from the private function
   // transform/decompose.js of D3's module d3-interpolate.
   // var {a, b, c, d, e, f} = matrix; // ES6, if this doesn't work, use this:
@@ -93,7 +91,7 @@ function getTransformation(transform) {
     scaleX: scaleX,
     scaleY: scaleY
   };
-}
+};
 
 
 // See http://jsfiddle.net/Y8y7V/1/ for avoiding object jump to cursor.
@@ -112,7 +110,7 @@ var dragBox = d3.drag()
 
 document.ondragover = function(event) {
     event.preventDefault();
-}
+};
 
 
 // Magenta text when hovering over non-ring-title text items (or dragging when
@@ -130,8 +128,9 @@ var textMouseleave = function() {
 
 
 // Create a JSON object, comprised of a sequence of key-value pairs, from the
-// current items in the list: keys are node types (e.g., "ROLES", "NEEDS"), and
-// values are arrays of text item objects that belong to each node type.
+// current items in the list: keys are node types, i.e., ring names (e.g.,
+// "ROLES", "NEEDS"), and values are arrays of text item objects, one array for 
+// each node type.
 var buildJSONFromList = function() {
   var json = {};
   var currKey = null;
@@ -179,6 +178,8 @@ var buildJSONFromList = function() {
 // 2) "displayedText": <string>,
 // 3) "text": <string>, and
 // 4) "dataIndex": <string>.
+//
+// Return the json object unless there are no boxes, in which case return null.
 var buildJSONFromBoxes = function() {
   var boxGs = d3.selectAll(".boxG");
   if (boxGs.nodes().length < 1) {
@@ -208,19 +209,18 @@ var buildJSONFromBoxes = function() {
 
 
 // Argument "strings" is expected to be an array of strings in which headers,
-// i.e. ring titles, are preceded by blank lines (other than the first, which is
-// the first string in the "strings" array.) Those headers become keys, the
-// associated value for each is a flat array of the following elements in
-// parameter "strings" up until the next blank line. The string that immediately
-// follows that blank line is expected to be the key for the next key/value
-// pair.
+// i.e. ring names, are preceded by blank lines (other than the first, which is
+// the first string in the "strings" array.) Those ring names become keys, the
+// associated value for each is an array of the following elements in parameter 
+// "strings" up until the next blank line. The string that immediately follows
+// each blank line is expected to be the key for the next key/value pair.
 var buildJSONFromStrings = function(strings) {
   var json = {};
   var isNextLineTitle = true;
   var currKey = null;
   strings.forEach(function(d) {
     if (d.length > 0) {
-      if (!isNextLineTitle) {     // new value for current key
+      if (!isNextLineTitle) {            // new value to attach to  current key
         if (currKey) {
           var currObj = {"text" : d};
           json[currKey]["textItems"].push(currObj);
@@ -238,13 +238,14 @@ var buildJSONFromStrings = function(strings) {
   return json;
 };
 
-
+// Returns an array of objects representing text items to be inserted into the
+// DOM as list items (as opposed to box elements).
 var buildListArray = function(json) {
-  var list = Array(); // objects representing text items to be inserted into DOM
+  var list = Array(); 
   var keys = Object.keys(json);
   var ix = 1;         // numbers for text items in list excluding ring titles
   for (var i = 0; i < keys.length; i++) {
-    // First push object representing ring title:
+    // First push object representing ring name:
     list.push({ "id": json[keys[i]].id,
                 "dataIndex": json[keys[i]].dataIndex,
                 "text": keys[i],
@@ -252,7 +253,7 @@ var buildListArray = function(json) {
                 "isRingTitle": true
               });
     var nTextItems = json[keys[i]].textItems.length;
-    // Then for each ring title push object for each associated text item:
+    // Then for each ring name push object for each associated text item:
     for (var j = 0; j < nTextItems; j++) {
       if (!json[keys[i]].textItems[j].displayedText) {
         json[keys[i]].textItems[j].displayedText = ix++ + ". "
@@ -310,6 +311,7 @@ var createTextListElementsFromJSON = function(json) {
 };
 
 
+// Returns the largest y-value for any of the boxes created.
 var createBoxesFromJSON = function(boxObjs) {
   var nBoxObjs = boxObjs ? boxObjs.length : 0;
   var maxBoxY = 0; // 2do: make this some reasonable min, even when [near] empty
@@ -764,8 +766,8 @@ var newBox = function(d) {
     }
   } else {
     if (boxXlateX) {
-      boxXlateX += 4;
-      boxXlateY += 4;
+      boxXlateX += 7;
+      boxXlateY += 7;
     } else {
       boxXlateX += (width / 8);
       boxXlateY += (height / 12);
@@ -839,7 +841,7 @@ var saveJSON = function() {
 
 // Main:
 var textDragging = null;
-var inBox = null;
+var inBox = null; // the box we're in if we're in a box
 var textHeight = 16;
 var padding = 10;
 var boxDefaultW = 200;
