@@ -12,8 +12,6 @@
 
 "use strict";
 
-var sortGlobal = {"jsonListObj": null, "jsonBoxesObj": null};
-
 
 // See http://jsfiddle.net/Y8y7V/1/ for avoiding object jump to cursor.
 var dragText = d3.drag()
@@ -140,10 +138,10 @@ var buildJSONFromList = function() {
       if (d.isRingTitle) { // then we have a new key
         currKey = d.text;
         json[currKey] = {};
-        json[currKey]["textItems"] =  new Array();
-        json[currKey]["id"] = this.id;
+        json[currKey].textItems =  new Array();
+        json[currKey].id = this.id;
         if (dataIndex) {
-          json[currKey]["dataIndex"] = dataIndex;
+          json[currKey].dataIndex = dataIndex;
         }
       } else { // add (object) element to (array) value for current key
         if (currKey) {
@@ -156,7 +154,7 @@ var buildJSONFromList = function() {
           if (!d.dataIndex && dataIndex) {
             d.dataIndex = dataIndex;
           }
-          json[currKey]["textItems"].push(d);
+          json[currKey].textItems.push(d);
         }
       }
     }
@@ -190,17 +188,17 @@ var buildJSONFromBoxes = function() {
     var box = d3.select(this);
     var boxTitle = box.select(".boxTitle").nodes()[0].textContent;
     var boxObj = {};
-    boxObj["title"] = boxTitle;
+    boxObj.title = boxTitle;
     var xform = box.nodes()[0].getAttribute("transform");
-    boxObj["xform"] = xform;
-    boxObj["textItems"] =  new Array();
+    boxObj.xform = xform;
+    boxObj.textItems =  new Array();
     box.selectAll(".boxText").each(function(d) {
       var textItem = {};
-      textItem["text"] = d.text;
-      textItem["id"] = this.id;
-      textItem["displayedText"] = d.displayedText;
-      textItem["dataIndex"] = this.getAttribute("data-index")
-      boxObj["textItems"].push(textItem);
+      textItem.text = d.text;
+      textItem.id = this.id;
+      textItem.displayedText = d.displayedText;
+      textItem.dataIndex = this.getAttribute("data-index")
+      boxObj.textItems.push(textItem);
     });
     json.push(boxObj);
   });
@@ -223,12 +221,12 @@ var buildJSONFromStrings = function(strings) {
       if (!isNextLineTitle) {            // new value to attach to  current key
         if (currKey) {
           var currObj = {"text" : d};
-          json[currKey]["textItems"].push(currObj);
+          json[currKey].textItems.push(currObj);
         }
       } else { // new key
         currKey = d.replace(/\:$/, ''); // lose any terminating colon
         json[currKey] = {};
-        json[currKey]["textItems"] =  new Array();
+        json[currKey].textItems =  new Array();
         isNextLineTitle = !isNextLineTitle;
       }
     } else {
@@ -237,6 +235,7 @@ var buildJSONFromStrings = function(strings) {
   });
   return json;
 };
+
 
 // Returns an array of objects representing text items to be inserted into the
 // DOM as list items (as opposed to box elements).
@@ -427,10 +426,10 @@ var addNewFileToExisting = function() {
   for (var i = 0; i < nTextItems; i++) {
     var newTextItem = {};
     var newDataIndex = (maxDataIndex + i + 1).toString();
-    newTextItem["dataIndex"] = newDataIndex;
-    newTextItem["displayedText"] = newDataIndex + ". " + textItems[i].text;
-    newTextItem["text"] = textItems[i].text;
-    newTextItem["id"] = "id" + newDataIndex;
+    newTextItem.dataIndex = newDataIndex;
+    newTextItem.displayedText = newDataIndex + ". " + textItems[i].text;
+    newTextItem.text = textItems[i].text;
+    newTextItem.id = "id" + newDataIndex;
     sortGlobal.jsonListObj[key].textItems.push(newTextItem);
   }
   sortGlobal.jsonBoxesObj = existingJsonBoxesObj;
@@ -510,11 +509,9 @@ document.ondrop = function(e) {
       var text = e.target.result;
       var json = isJson(text);
       if (json) {
-        console.log("dropped file is JSON.");
         sortGlobal.jsonListObj = json.unsorted;
         sortGlobal.jsonBoxesObj = json.sorted;
       } else {
-        console.log("dropped file is not JSON.");
         sortGlobal.jsonBoxesObj = null;
         var split = text.split("\n");
         sortGlobal.jsonListObj = buildJSONFromStrings(split);
@@ -561,7 +558,6 @@ var resizeViewBox = function() {
 };
 
 
-
 // Adjust box size to hold its contents. Returns max y-value for this box.
 var resizeBox = function(boxG) {
   var txts = boxG.selectAll(".boxText");
@@ -587,6 +583,10 @@ var resizeBox = function(boxG) {
 // Put all text items not in boxes in DOM order along the left side of the
 // window and remove unwanted blank lines.
 var cleanUpList = function() {
+  if (textDragging) {
+    d3.select(textDragging).style("fill", "#000000");
+    textDragging = null;
+  }
   var listTexts = d3.selectAll(".nodeText");
   for (var i = 0; i < listTexts.nodes().length; i++) {
     d3.select(listTexts.nodes()[i])
@@ -631,7 +631,7 @@ var dropTextIntoBox = function(d) {
       });
     d3.selectAll(".boxText").call(dragText);
     d3.select(textDragging).remove();
-    textDragging = null;
+    //textDragging = null;
     resizeBox(d3.select(inBox));
     cleanUpList();
     inBox = null;
@@ -831,8 +831,8 @@ var saveText = function() {
 // box appear as an array of string values.
 var saveJSON = function() {
   var topJson = {};
-  topJson["sorted"] = buildJSONFromBoxes();
-  topJson["unsorted"] = buildJSONFromList();
+  topJson.sorted = buildJSONFromBoxes();
+  topJson.unsorted = buildJSONFromList();
   var blob = new Blob([window.JSON.stringify(topJson)],
                       {type: "text/plain;charset=utf-8"});
   window.saveAs(blob, "sortedItems.json");
@@ -854,6 +854,7 @@ var height =  window.innerHeight|| docElt.clientHeight|| bodyElt.clientHeight;
 var nextId = 0; // Global id accessed to ensure no duplicate ids in DOM.
 var boxXlateX = null;
 var boxXlateY = null;
+var sortGlobal = {"jsonListObj": null, "jsonBoxesObj": null};
 
 var topDiv = d3.select("#topDiv")
   .attr("width", width)
