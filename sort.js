@@ -139,7 +139,6 @@ var buildJSONFromList = function() {
         currKey = d.text;
         json[currKey] = {};
         json[currKey].textItems =  new Array();
-        json[currKey].id = this.id;
         if (dataIndex) {
           json[currKey].dataIndex = dataIndex;
         }
@@ -147,9 +146,6 @@ var buildJSONFromList = function() {
         if (currKey) {
           if (!d.displayedText) {
             d.displayedText = this.innerHTML;
-          }
-          if (!d.id) {
-            d.id = this.id;
           }
           if (!d.dataIndex && dataIndex) {
             d.dataIndex = dataIndex;
@@ -172,10 +168,9 @@ var buildJSONFromList = function() {
 //
 // Each element of the "textItems" array is an object comprised of these key-
 // value pairs:
-// 1) "id": <string>,
-// 2) "displayedText": <string>,
-// 3) "text": <string>, and
-// 4) "dataIndex": <string>.
+// 1) "displayedText": <string>,
+// 2) "text": <string>, and
+// 3) "dataIndex": <string>.
 //
 // Return the json object unless there are no boxes, in which case return null.
 var buildJSONFromBoxes = function() {
@@ -195,7 +190,6 @@ var buildJSONFromBoxes = function() {
     box.selectAll(".boxText").each(function(d) {
       var textItem = {};
       textItem.text = d.text;
-      textItem.id = this.id;
       textItem.displayedText = d.displayedText;
       textItem.dataIndex = this.getAttribute("data-index")
       boxObj.textItems.push(textItem);
@@ -245,8 +239,7 @@ var buildListArray = function(json) {
   var ix = 1;         // numbers for text items in list excluding ring titles
   for (var i = 0; i < keys.length; i++) {
     // First push object representing ring name:
-    list.push({ "id": json[keys[i]].id,
-                "dataIndex": json[keys[i]].dataIndex,
+    list.push({ "dataIndex": json[keys[i]].dataIndex,
                 "text": keys[i],
                 "displayedText": keys[i],
                 "isRingTitle": true
@@ -278,13 +271,6 @@ var createTextListElementsFromJSON = function(json) {
     .enter()
     .append("text")
       .classed("nodeText", true)
-      .attr("id", function(d) {
-        if (d && d.id) {
-          return d.id;
-        } else {
-          return "id" + nextId++;
-        }
-      })
       .attr("data-index", function(d) { // List re-insertion text item location
         if (d.dataIndex) {
           return d.dataIndex;
@@ -378,8 +364,8 @@ var showSorryDialog = function(title) {
 // both those still in the list and those in boxes. Get the largest dataIndex
 // value in the array.
 // 2) Build new text items from the new file with dataIndex starting at existing
-// largest + 1. Add the other fields, those  whose values incorporate the
-// dataIndex value -- i.e., displayedText and id -- with values set accordingly.
+// largest + 1. Add displayedText (whose value incorporates the dataIndex value)
+// with value set accordingly.
 // 3) Add the new text items to the list of existing text items.
 // 4) Reload using the new augmented list, plus the boxes as they already exist
 // in the DOM (since by simplifying assumption #1 above we're not adding new
@@ -429,7 +415,6 @@ var addNewFileToExisting = function() {
     newTextItem.dataIndex = newDataIndex;
     newTextItem.displayedText = newDataIndex + ". " + textItems[i].text;
     newTextItem.text = textItems[i].text;
-    newTextItem.id = "id" + newDataIndex;
     sortGlobal.jsonListObj[key].textItems.push(newTextItem);
   }
   sortGlobal.jsonBoxesObj = existingJsonBoxesObj;
@@ -471,7 +456,7 @@ var loadSingleFile = function() {
  
 
 var showDropInDialog = function(e) {
-  $("<div id='multi-drop'>Select from the following options:</div>")
+  $("<div>Select from the following options:</div>")
     .appendTo("#topDiv").dialog({
       title: "You're already working on a list.",
       resizable: false,
@@ -598,8 +583,9 @@ var cleanUpList = function() {
 };
 
 
-// Return the id of the text element that should be next after arg "elt".
-var getFollowingListElementId = function(elt) {
+// Return the dataIndex of the text element that should be next after parameter
+// "elt". If there isn't one, return null.
+var getFollowingDataIndex = function(elt) {
   var textArray = d3.select("#textListG").nodes()[0].childNodes;
   var arrayLength = textArray.length;
   var index = parseInt(elt.getAttribute("data-index"));
@@ -608,7 +594,7 @@ var getFollowingListElementId = function(elt) {
       && parseInt(textArray[i].getAttribute("data-index")) < index) {
     i++;
   }
-  return (i == arrayLength) ? null : textArray[i].getAttribute("id");
+  return (i == arrayLength) ? null : textArray[i].getAttribute("data-index");
 };
 
 
@@ -619,7 +605,6 @@ var dropTextIntoBox = function(d) {
     var num = d.displayedText.split(".")[0];
     d3.select(inBox).append("text")
       .classed("boxText", true)
-      .attr("id", textDragging.getAttribute("id"))
       .text(d.text)
       .datum(d)
       .style("fill", "#000000")
@@ -645,7 +630,6 @@ var addTextToBox = function(box, d) {
   var num = d.displayedText.split(".")[0];
   box.append("text")
     .classed("boxText", true)
-    .attr("id", d.id)
     .text(d.text)
     .datum(d)
     .style("fill", "#000000")
@@ -730,13 +714,13 @@ var getSelectedBoxText = function(box) {
 var removeTextItemFromBox = function(box) {
   var selectedBoxText = getSelectedBoxText(box);
   if (!selectedBoxText) return;
-  var followingEltId = getFollowingListElementId(selectedBoxText);
-  var restoredText = followingEltId
-    ? d3.select("#textListG").insert("text", "#" + followingEltId)
+  var followingDataIndex = getFollowingDataIndex(selectedBoxText);
+  var restoredText = followingDataIndex
+    ? d3.select("#textListG")
+        .insert("text", "[data-index='" + followingDataIndex + "']")
     : d3.select("#textListG").append("text");
   restoredText
     .classed("nodeText", true)
-    .attr("id", selectedBoxText.getAttribute("id"))
     .attr("data-index", selectedBoxText.getAttribute("data-index"))
     .datum(d3.select(selectedBoxText).datum())
     .style("fill", "#000000")
@@ -851,7 +835,6 @@ var bodyElt = document.getElementsByTagName("body")[0];
 var width = window.innerWidth * 2 || docElt.clientWidth * 2
     || bodyElt.clientWidth * 2; // Double width means more room for boxes.
 var height =  window.innerHeight|| docElt.clientHeight|| bodyElt.clientHeight;
-var nextId = 0; // Global id accessed to ensure no duplicate ids in DOM.
 var boxXlateX = null;
 var boxXlateY = null;
 var sortGlobal = {"jsonListObj": null, "jsonBoxesObj": null};
@@ -875,7 +858,6 @@ d3.select("#topDiv").append("span")
   .text("Items to sort:")
 
 d3.select("#headerDiv").append("button")
-  .attr("id", "newBoxBtn")
   .text("New Box")
   .on("click", newBox);
 
@@ -888,7 +870,6 @@ d3.select("#headerDiv").append("button")
   .on("click", saveText);
 
 d3.select("#headerDiv").append("button")
-  .attr("id", "helpBtn")
   .text("Help")
   .on("click", function() {
     window.open("instructions.html", "_blank");
