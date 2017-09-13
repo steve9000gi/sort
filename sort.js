@@ -383,10 +383,14 @@ var addNewFileToExisting = function() {
   }
   var existingJsonListObj = buildJSONFromList();
   var existingKeys = Object.keys(existingJsonListObj);
+  if (existingKeys.length > 1) {
+       showSorryDialog("currently loaded file shows multiple ring names.");
+       return;
+  }
   var key = existingKeys[0]; // At this point there'd better be only one key.
   if (key != newKeys[0]) {
     showSorryDialog(
-      "can't add a file with a different ring than what's already loaded.");
+      "can't add a file for a different ring than what's already loaded.");
     return;
   }
   var existingJsonBoxesObj = buildJSONFromBoxes();
@@ -405,7 +409,9 @@ var addNewFileToExisting = function() {
       existingDataIndices.push(parseInt(currTextItems[j].dataIndex));
     }
   }
-  var maxDataIndex = Math.max.apply(Math, existingDataIndices);
+  var maxDataIndex = (existingDataIndices.length > 0)
+                   ? Math.max.apply(Math, existingDataIndices)
+                   : 0;
   var textItems = sortGlobal.jsonListObj[key].textItems;
   sortGlobal.jsonListObj = existingJsonListObj;
   var nTextItems = textItems.length;
@@ -616,7 +622,6 @@ var dropTextIntoBox = function(d) {
       });
     d3.selectAll(".boxText").call(dragText);
     d3.select(textDragging).remove();
-    //textDragging = null;
     resizeBox(d3.select(inBox));
     cleanUpList();
     inBox = null;
