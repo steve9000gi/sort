@@ -449,10 +449,12 @@ var validRingNames = function(candidates) {
 
 
 var loadSingleFile = function() {
+  /* 2do: strip non-alphabetic chars from keys
   if (!validRingNames(Object.keys(sortGlobal.jsonListObj))) {
     showSorryDialog("invalid ring name in input.");
     return;
   }
+  */
   d3.select("svg").selectAll("*").remove();
   createTextListElementsFromJSON(sortGlobal.jsonListObj);
   createBoxesFromJSON(sortGlobal.jsonBoxesObj);
