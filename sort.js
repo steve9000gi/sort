@@ -606,10 +606,76 @@ var getFollowingDataIndex = function(elt) {
 };
 
 
+var getRcodes = function(txt) {
+  console.log("getRcodes(" + txt + ")");
+  var txtArray = txt.split("{rcode ");
+  var txtArrayLength = txtArray.length;
+  for (var i = 0; i < txtArrayLength; i++) {
+//    console.log("txtArray[" + i.toString() + "]: \"" + txtArray[i] + "\"");
+  }
+  var rcodes = [];
+  for (var i = 1; i < txtArrayLength; i++) {
+    var trimmed = txtArray[i].trim();
+    rcodes.push("{rcode " + trimmed);
+  }
+  console.log(rcodes)
+  return rcodes;
+}
+
+
+var showRcodeSelectionDialog = function() {
+  var dlg = $("<div>Select one the following options:</div>")
+    .appendTo("#topDiv").dialog({
+      title: "The text node you selected has more than one rcode appended.",
+      resizable: false,
+      height: "auto",
+      modal: true,
+      dialogClass: "no-close",
+      position: { my: "top", at: "top+50" },
+      buttons: {
+      },
+      close: function (event, ui) {
+        console.log("selectedRcode: " + selectedRcode);
+        if (titleBox) {
+          var title = d3.select(titleBox).node().childNodes[1].innerHTML;
+          title = title + " " + selectedRcode;
+          console.log("title: " + title);
+          d3.select(titleBox).node().childNodes[1].innerHTML = title;
+        } else {
+          console.log("Warning: no titleBox");
+        }
+        $(this).dialog("destroy").remove();
+      }
+  });
+  var btns = dlg.dialog("option", "buttons");
+  for (var i = 0; i < rcodes.length; i++) {
+    var btn = {};
+    btn[rcodes[i]] = function(e) {
+                       selectedRcode = e.target.computedName;
+                       $(this).dialog("close");
+                     };
+    $.extend(btns, btn);
+    dlg.dialog("option", "buttons", btns);
+  }
+};
+
+
 // If the user is dragging a text element, drop a copy into the box and remove
 // the original text element from the list. Returns max y-value for this box.
 var dropTextIntoBox = function(d) {
   if (textDragging) {
+    rcodes = getRcodes(d.text);
+    var numRcodes = rcodes.length;
+    if (numRcodes > 1) {
+      showRcodeSelectionDialog();
+    }
+    titleBox = inBox;
+/*
+    var title = d3.select(inBox).node().childNodes[1].innerHTML;
+    title = title + " " + selectedRcode;
+    console.log("title: " + title);
+    d3.select(inBox).node().childNodes[1].innerHTML = title;
+*/
     var num = d.displayedText.split(".")[0];
     d3.select(inBox).append("text")
       .classed("boxText", true)
@@ -833,6 +899,7 @@ var saveJSON = function() {
 // Main:
 var textDragging = null;
 var inBox = null; // the box we're in if we're in a box
+var titleBox = null;
 var textHeight = 16;
 var padding = 10;
 var boxDefaultW = 200;
@@ -845,6 +912,8 @@ var height =  window.innerHeight|| docElt.clientHeight|| bodyElt.clientHeight;
 var boxXlateX = null;
 var boxXlateY = null;
 var sortGlobal = {"jsonListObj": null, "jsonBoxesObj": null};
+var rcodes = null;
+var selectedRcode = "{rcode default}";;
 
 var topDiv = d3.select("#topDiv")
   .attr("width", width)

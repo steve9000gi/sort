@@ -59,6 +59,11 @@ button {
   margin: 6px !important;
 }
 
-.ui-dialog { z-index: 1000 !important ;}
-.ui-front { z-index: 1000 !important; }
+.ui-dialog { z-index: 10 !important ;}
+.ui-front { z-index: 10 !important; }
 
+.ui-dialog .ui-dialog-titlebar-close {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+}
