@@ -607,18 +607,15 @@ var getFollowingDataIndex = function(elt) {
 
 
 var getRcodes = function(txt) {
-  console.log("getRcodes(" + txt + ")");
   var txtArray = txt.split("{rcode ");
   var txtArrayLength = txtArray.length;
   for (var i = 0; i < txtArrayLength; i++) {
-//    console.log("txtArray[" + i.toString() + "]: \"" + txtArray[i] + "\"");
   }
   var rcodes = [];
   for (var i = 1; i < txtArrayLength; i++) {
     var trimmed = txtArray[i].trim();
     rcodes.push("{rcode " + trimmed);
   }
-  console.log(rcodes)
   return rcodes;
 }
 
@@ -628,7 +625,6 @@ var addRcodeToBoxTitle = function() {
     var title = d3.select(titleBox).node().childNodes[1].innerHTML;
     title = title.split("{rcode ")[0]; // only 1 rcode for title
     title = title + " " + selectedRcode;
-    console.log("title: " + title);
     d3.select(titleBox).node().childNodes[1].innerHTML = title;
   } else {
     console.log("Warning: no titleBox");
@@ -639,7 +635,7 @@ var addRcodeToBoxTitle = function() {
 var showRcodeSelectionDialog = function() {
   var dlg = $("<div>Select one the following options:</div>")
     .appendTo("#topDiv").dialog({
-      title: "The text node you selected has more than one rcode appended.",
+      title: "The text item you selected has more than one rcode appended.",
       resizable: false,
       height: "auto",
       modal: true,
