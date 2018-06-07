@@ -623,6 +623,19 @@ var getRcodes = function(txt) {
 }
 
 
+var addRcodeToBoxTitle = function() {
+  if (titleBox) {
+    var title = d3.select(titleBox).node().childNodes[1].innerHTML;
+    title = title.split("{rcode ")[0]; // only 1 rcode for title
+    title = title + " " + selectedRcode;
+    console.log("title: " + title);
+    d3.select(titleBox).node().childNodes[1].innerHTML = title;
+  } else {
+    console.log("Warning: no titleBox");
+  }
+};
+
+
 var showRcodeSelectionDialog = function() {
   var dlg = $("<div>Select one the following options:</div>")
     .appendTo("#topDiv").dialog({
@@ -635,15 +648,7 @@ var showRcodeSelectionDialog = function() {
       buttons: {
       },
       close: function (event, ui) {
-        console.log("selectedRcode: " + selectedRcode);
-        if (titleBox) {
-          var title = d3.select(titleBox).node().childNodes[1].innerHTML;
-          title = title + " " + selectedRcode;
-          console.log("title: " + title);
-          d3.select(titleBox).node().childNodes[1].innerHTML = title;
-        } else {
-          console.log("Warning: no titleBox");
-        }
+        addRcodeToBoxTitle();
         $(this).dialog("destroy").remove();
       }
   });
@@ -664,18 +669,39 @@ var showRcodeSelectionDialog = function() {
 // the original text element from the list. Returns max y-value for this box.
 var dropTextIntoBox = function(d) {
   if (textDragging) {
+    var titleRcode = null;
+    var childNodes = d3.select(inBox).node().childNodes;
+    var titleArray = childNodes[1].innerHTML.split("{rcode ");
     rcodes = getRcodes(d.text);
     var numRcodes = rcodes.length;
-    if (numRcodes > 1) {
-      showRcodeSelectionDialog();
+    if (titleArray.length > 1)  // ...then box title has an rcode already
+    {
+      titleRcode = "{rcode " + titleArray[1];
+      if (rcodes.indexOf(titleRcode) == -1) { // ...no item/title rcode match
+        cleanUpList();
+        inBox = null;
+        alert("No item rcode match with box title rcode \"{rcode " +
+              titleArray[1] + "\"");
+        return;
+      }
+    } else if ((titleArray.length < 2)  // no rcode in title
+            && (numRcodes > 0)          // rcode in new item
+            && (childNodes.length > 2)) // already (non-rcoded) items in box
+    { // no rcode in title and boxed item[s], but new item is rcoded
+      cleanUpList();
+      inBox = null;
+      alert("Dragged text item has rcode, unlike other item[s] already in box");
+      return;
     }
     titleBox = inBox;
-/*
-    var title = d3.select(inBox).node().childNodes[1].innerHTML;
-    title = title + " " + selectedRcode;
-    console.log("title: " + title);
-    d3.select(inBox).node().childNodes[1].innerHTML = title;
-*/
+    if (!titleRcode) {
+      if (numRcodes > 1) {
+        showRcodeSelectionDialog();
+      } else if (numRcodes > 0) {
+        selectedRcode = rcodes[0];
+        addRcodeToBoxTitle();
+      }      
+    }
     var num = d.displayedText.split(".")[0];
     d3.select(inBox).append("text")
       .classed("boxText", true)
