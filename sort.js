@@ -652,7 +652,7 @@ var showRcodeSelectionDialog = function() {
   for (var i = 0; i < rcodes.length; i++) {
     var btn = {};
     btn[rcodes[i]] = function(e) {
-                       selectedRcode = e.target.computedName;
+                       selectedRcode = e.target.innerHTML;
                        $(this).dialog("close");
                      };
     $.extend(btns, btn);
